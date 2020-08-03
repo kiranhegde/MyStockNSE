@@ -327,6 +327,112 @@ def new_stock(agency=""):
         stk = add_stocks()
     # stk.exec_()
 
+class show_stock_info(QDialog):
+
+    def __init__(self,stock_id,stock_info, parent=None):
+        super(show_stock_info, self).__init__(parent)
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowTitle("Stock Details")
+        # self.setWindowIcon(QIcon('icons/icon.ico'))
+        self.setGeometry(550, 350, 250, 350)
+        self.setFixedSize(self.size())
+        self.stock_id=stock_id
+        self.stock_info=stock_info
+        self.UI()
+        self.show()
+
+    def UI(self):
+        self.productDetails()
+        self.widgets()
+        self.layouts()
+
+    def productDetails(self):
+        self.xchange=self.stock_info[0]
+        self.equity=self.stock_info[1]
+        self.Tdate=self.stock_info[2]
+        self.Sdate=self.stock_info[3]
+        self.price=self.stock_info[4]
+        self.quantity=self.stock_info[5]
+        self.cont_amount=self.stock_info[6]
+        self.brokerage=self.stock_info[7]
+        self.gst=self.stock_info[8]
+        self.stt=self.stock_info[9]
+        self.itax=self.stock_info[11]
+
+    def widgets(self):
+        fnt = QFont()
+        fnt.setPointSize(13)
+        fnt.setBold(True)
+        fnt.setFamily("Arial")
+
+        self.stock_idLabel = QLabel()
+        self.stock_idLabel.setFont(fnt)
+        self.stock_idLabel.setText(self.stock_id)
+
+
+        self.xchangeLabel=QLabel()
+        self.xchangeLabel.setFont(fnt)
+        self.xchangeLabel.setText(self.xchange)
+
+        self.equityLabel = QLabel(self.equity)
+        self.equityLabel.setFont(fnt)
+        self.equityLabel.setText(self.equity)
+
+        self.TdateLabel = QLabel()
+        self.TdateLabel.setFont(fnt)
+        self.TdateLabel.setText(self.Tdate)
+
+        self.SdateLabel = QLabel()
+        self.SdateLabel.setFont(fnt)
+        self.SdateLabel.setText(self.Sdate)
+
+        self.priceLabel = QLabel()
+        self.priceLabel.setFont(fnt)
+        self.priceLabel.setText(str(self.price))
+
+        self.quantityLabel = QLabel()
+        self.quantityLabel.setFont(fnt)
+        self.quantityLabel.setText(str(self.quantity))
+
+        self.cont_amountLabel = QLabel()
+        self.cont_amountLabel.setFont(fnt)
+        self.cont_amountLabel.setText(str(self.cont_amount))
+
+        self.brokerageLabel = QLabel()
+        self.brokerageLabel.setFont(fnt)
+        self.brokerageLabel.setText(str(self.brokerage))
+
+        self.gstLabel = QLabel()
+        self.gstLabel.setFont(fnt)
+        self.gstLabel.setText(str(self.gst))
+
+        self.sttLabel = QLabel(str(self.stt))
+        self.sttLabel.setFont(fnt)
+        self.itaxLabel = QLabel(str(self.itax))
+        self.itaxLabel.setFont(fnt)
+
+
+    def layouts(self):
+        self.mainLayout = QVBoxLayout()
+        self.bottomFrame = QFrame()
+        self.bottomLayout = QFormLayout()
+        self.bottomLayout.addRow(QLabel("Stock ID: "), self.stock_idLabel)
+        self.bottomLayout.addRow(QLabel("Exchange: "), self.xchangeLabel)
+        self.bottomLayout.addRow(QLabel("Equity: "), self.equityLabel)
+        self.bottomLayout.addRow(QLabel("Trade Date: "), self.TdateLabel)
+        self.bottomLayout.addRow(QLabel("Settlement Date: "), self.SdateLabel)
+        self.bottomLayout.addRow(QLabel("Price: "), self.priceLabel)
+        self.bottomLayout.addRow(QLabel("Quantity: "), self.quantityLabel)
+        self.bottomLayout.addRow(QLabel("Contract Amount: "), self.cont_amountLabel)
+        self.bottomLayout.addRow(QLabel("Brokerage "), self.brokerageLabel)
+        self.bottomLayout.addRow(QLabel("GST"), self.gstLabel)
+        self.bottomLayout.addRow(QLabel("STT"), self.sttLabel)
+        self.bottomLayout.addRow(QLabel("Income Tax"), self.itaxLabel)
+        self.bottomFrame.setLayout(self.bottomLayout)
+        self.mainLayout.addWidget(self.bottomFrame)
+
+        self.setLayout(self.mainLayout)
+
 
 class add_stocks(QDialog):
 

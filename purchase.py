@@ -4,7 +4,7 @@ from PyQt5.QtCore import Qt,QPoint,pyqtSlot,QDateTime,QVariant
 
 import ast
 from collections import defaultdict
-from db_management import read_db,check_db,add_stocks,update_stocks,saveStockDB,delStockDB
+from db_management import read_db,check_db,add_stocks,update_stocks,saveStockDB,delStockDB,show_stock_info
 
 
 
@@ -115,6 +115,10 @@ def get_nested_dist_value(data, *args):
                 return value
             else :
                 return get_nested_dist_value(value, * args[1:])
+
+
+
+
 
 def parse_str(s):
    try:
@@ -489,9 +493,44 @@ class purchase_list(QWidget):
     def show_Stock(self):
 
         if self.stockList.selectedItems():
+            agency = self.List_of_agency.currentItem().text()
             row_number = self.stockList.currentRow()
             invoice = self.stockList.item(row_number, 0).text()
-            print(invoice)
+            # print(invoice)
+            stock_data =list(self.get_stock_info(agency,invoice))
+            # print(stock_data)
+
+            if invoice:
+                showInfo = show_stock_info(invoice,stock_data)
+                showInfo.exec_()
+            else:
+                pass
+
+    def get_stock_info(self,agency,invoice):
+
+
+        if invoice:
+            invoice=parse_str(invoice)
+            # agency=parse_str(agency)
+            agencyStock = get_nested_dist_value(self.stockInfo,agency)
+            searchCase = get_nested_dist_value(agencyStock,invoice)
+            #
+            # print(type(invoice), type(stocks))
+            # print(agencyStock)
+            # print(searchCase)
+            # exit()
+            # for key, val in stocks.items():
+            #     rowList = list(val)
+            #     rowList.insert(0, key)
+            #     row_data = tuple(rowList)
+
+                #
+                # for column_number, data in enumerate(row_data):
+                #     self.stockList.setSortingEnabled(False)
+                #     self.stockList.setItem(row_number, column_number, QTableWidgetItem(str(data)))
+            # print(row_data)
+            return searchCase
+
 
 
 
