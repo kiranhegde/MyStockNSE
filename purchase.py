@@ -4,7 +4,7 @@ from PyQt5.QtCore import Qt,QPoint,pyqtSlot,QDateTime,QVariant
 
 import ast
 from collections import defaultdict
-from db_management import read_db,check_db,add_stocks,update_stocks,saveStockDB,check_msg
+from db_management import read_db,check_db,add_stocks,update_stocks,saveStockDB,delStockDB
 
 
 
@@ -31,8 +31,26 @@ class make_nested_dict0(dict):
             value = self[item] = type(self)()
             return value
 
+def delete_keys_from_dict(d, to_delete):
+    if isinstance(to_delete, str):
+        to_delete = [to_delete]
+    if isinstance(d, dict):
+        for single_to_delete in set(to_delete):
+            if single_to_delete in d:
+                del d[single_to_delete]
+        for k, v in d.items():
+            delete_keys_from_dict(v, to_delete)
+    elif isinstance(d, list):
+        for i in d:
+            delete_keys_from_dict(i, to_delete)
+    return d
+
+
 # https: // stackoverflow.com / questions / 12009134 / adding - widgets - to - qtablewidget - pyqt
 def set_column_sort(table,columnIndex):
+
+
+
     if table.rowCount() > 0:
         for i in range(table.rowCount()):
             # print("#",i)
@@ -125,7 +143,30 @@ class purchase_list(QWidget):
 
 
     def widgets(self):
+
+        fnt = QFont("Arial", 13,QFont.Bold)
+        # fnt.setPointSize(13)
+        # fnt.setBold(True)
+        # fnt.setFamily("Arial")
+        # fnt.QColor(0, 255, 0)
+
+        self.totalInvestment = QLabel("0")
+        self.totalInvestment.setFont(fnt)
+        self.totalCharges = QLabel("0")
+        self.totalCharges.setFont(fnt)
+
+        self.agencyInvestmt=QLabel("0")
+        self.agencyInvestmt.setFont(fnt)
+        self.agencyCharges=QLabel("0")
+        self.agencyCharges.setFont(fnt)
+
+        self.agencyName = QLabel("AgencyName")
+        self.agencyName.setFont(fnt)
+
+
+
         # https: // programming.vip / docs / pyqt5 - quick - start - pyqt5 - basic - window - components.html
+
         self.refreshAll = QPushButton('Refresh')
         self.refreshAll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.refreshAll.setToolTip('Re-read database \n and calculate')
@@ -148,11 +189,104 @@ class purchase_list(QWidget):
         self.stockList.setContextMenuPolicy(Qt.CustomContextMenu)
         self.stockList.customContextMenuRequested.connect(self.rightClickMenu)
 
-        self.List_of_agency.itemDoubleClicked.connect(self.get_stocks)
+        # self.List_of_agency.itemDoubleClicked.connect(self.get_stocks)
+        self.List_of_agency.itemClicked.connect(self.get_stocks)
+        # self.List_of_agency.currentItemChanged.connect(lambda:  self.agencyName.setText(self.List_of_agency.CurrentItem()))
+        # self.List_of_agency.currentItemChanged.connect(self.get_agencyName)
+
+        # abc=self.List_of_agency.currentItem()
         item = self.List_of_agency.item(0)
         self.List_of_agency.setCurrentItem(item)
         self.get_stocks(item)
 
+
+
+    def layouts(self):
+        self.mainLayout=QHBoxLayout()
+        self.horizontalSplitter=QSplitter(Qt.Horizontal)
+        self.leftVsplitter=QSplitter(Qt.Vertical)
+        self.rightVsplitter=QSplitter(Qt.Vertical)
+        self.rightBottomLayout=QHBoxLayout()
+
+        # self.buttons=QWidget()
+        # self.controlLayout=QHBoxLayout()
+        # # self.controlLayout.addStretch()
+        # self.controlLayout.addWidget(self.refreshAll)
+        # self.controlLayout.addWidget(self.calculate)
+        # self.controlLayout.addWidget(self.save2db)
+        # self.buttons.setLayout(self.controlLayout)
+
+        # self.totalInvestment = QLabel("0")
+        # self.totalCharges = QLabel("0")
+        #
+        # self.agencyInvestmt = QLabel("0")
+        # self.agencyCharges = QLabel("0")
+
+        self.agency_summaryLayout=QGridLayout()
+        self.agency_summaryLayout.addWidget(self.agencyName,0,0)
+        self.agency_summaryLayout.addWidget(QLabel('Total tax and brokerage : '),0,1)
+        self.agency_summaryLayout.addWidget(self.agencyCharges,0,2)
+        self.agency_summaryLayout.addWidget(QLabel('Total Investment : '), 0, 3)
+        self.agency_summaryLayout.addWidget(self.agencyInvestmt, 0, 4)
+
+        self.overallSummaryLayout=QGridLayout()
+        self.overallSummaryLayout.addWidget(QLabel('Total tax and brokerage:'), 0, 0)
+        # self.overallSummaryLayout.addWidget(QLineEdit(),0,1)
+        self.overallSummaryLayout.addWidget(QLabel('Total Investment:'), 0, 1)
+        # self.overallSummaryLayout.addWidget(QLineEdit(), 0, 3)
+
+        # self.summaryGroupBox = QGroupBox(self.agencyName.text())
+        self.summaryGroupBox = QGroupBox("Agency")
+        self.summaryGroupBox.setLayout(self.agency_summaryLayout)
+
+        self.overallsummaryGroupBox = QGroupBox('Total Investment')
+        self.overallsummaryGroupBox.setLayout(self.overallSummaryLayout)
+
+        self.rightBottomLayout.addWidget(self.summaryGroupBox)
+        self.rightBottomLayout.addWidget(self.overallsummaryGroupBox)
+        self.rightBottomWidget=QWidget()
+        self.rightBottomWidget.setLayout(self.rightBottomLayout)
+
+
+        self.leftLayout=QVBoxLayout()
+        self.rightLayout=QVBoxLayout()
+        self.leftTopGroupBox=QGroupBox("Agency List")
+        self.rightTopGroupBox=QGroupBox("Stock List")
+
+        self.leftLayout.addWidget(self.List_of_agency)
+        # self.rightLayout.addWidget(self.buttons,4)
+        self.rightLayout.addWidget(self.stockList)
+        self.leftTopGroupBox.setLayout(self.leftLayout)
+        self.rightTopGroupBox.setLayout(self.rightLayout)
+
+        self.leftVsplitter.addWidget(self.leftTopGroupBox)
+        self.rightVsplitter.addWidget(self.rightTopGroupBox)
+        # self.rightVsplitter.addWidget(self.summaryGroupBox)
+        self.rightVsplitter.addWidget(self.rightBottomWidget)
+        self.rightVsplitter.setStretchFactor(0,97)
+        self.rightVsplitter.setStretchFactor(1,3)
+
+        self.horizontalSplitter.addWidget(self.leftVsplitter)
+        self.horizontalSplitter.addWidget(self.rightVsplitter)
+        self.horizontalSplitter.setStretchFactor(0, 10)
+        self.horizontalSplitter.setStretchFactor(1, 90)
+        self.horizontalSplitter.setContentsMargins(0, 0, 0, 0)
+        self.horizontalSplitter.handle(0)
+
+        self.mainLayout.addWidget(self.horizontalSplitter)
+        self.setLayout(self.mainLayout)
+
+
+
+
+    #
+    # @pyqtSlot()
+    # def get_agencyName(self):
+    #     item=self.List_of_agency.currentItem()
+    #     self.agencyName.setText(item.text())
+
+        # print(self.agencyName.text())
+        # return self.agencyName
 
 
     def load_agency(self,agency):
@@ -171,7 +305,14 @@ class purchase_list(QWidget):
         agncy = item.text()
         self.stockList.setRowCount(0)
 
+        # item = self.List_of_agency.currentItem()
+        self.agencyName.setText(agncy)
+        # self.summaryGroupBox.setTitle(agncy)
+        # print(self.agencyName.text())
+
         stocks=get_nested_dist_value(self.stockInfo,agncy)
+
+        # print(agncy,stocks)
 
         for key, val in stocks.items():
             row_number = self.stockList.rowCount()
@@ -179,6 +320,7 @@ class purchase_list(QWidget):
             rowList = list(val)
             rowList.insert(0,key)
             row_data = tuple(rowList)
+
             for column_number, data in enumerate(row_data):
                 self.stockList.setSortingEnabled(False)
                 self.stockList.setItem(row_number, column_number, QTableWidgetItem(str(data)))
@@ -186,6 +328,26 @@ class purchase_list(QWidget):
 
         self.stockList.setSortingEnabled(True)
         table_sort_color(self.stockList)
+
+        output=self.calculate_sum(agncy)
+
+        self.agencyInvestmt.setText(str(output[0]))
+        self.agencyCharges.setText(str(output[1]))
+        # print(self.agencyCharges.text(), self.agencyInvestmt.text())
+
+
+    # def stock_table_to_info(self,agency):
+    #
+    #     for key, val in stocks.items():
+    #         row_number = self.stockList.rowCount()
+    #         self.stockList.setRowCount(row_number + 1)
+    #         rowList = list(val)
+    #         rowList.insert(0, key)
+    #         row_data = tuple(rowList)
+    #
+    #         for column_number, data in enumerate(row_data):
+    #             self.stockList.setSortingEnabled(False)
+    #             self.stockList.setItem(row_number, column_number, QTableWidgetItem(str(data)))
 
 
     def store_stocks(self):
@@ -216,11 +378,6 @@ class purchase_list(QWidget):
         return stocksInfo
 
 
-    def edit_item(self,item):
-        items = self.stockList.currentItem()
-        # print(item.text())
-        print(len(items))
-        # print(items.text())
 
 
     def stock_calc(self, input_data):
@@ -263,10 +420,10 @@ class purchase_list(QWidget):
         stockTable.setHorizontalHeaderItem(5, QTableWidgetItem("Trade \n Price"))
         stockTable.setHorizontalHeaderItem(6, QTableWidgetItem("Quantity"))
         stockTable.setHorizontalHeaderItem(7, QTableWidgetItem("Contract \n Amount"))
-        stockTable.setHorizontalHeaderItem(8, QTableWidgetItem("Broackerage \n (% per unit)"))
-        stockTable.setHorizontalHeaderItem(9, QTableWidgetItem("GST(%) on \n Brockerage"))
+        stockTable.setHorizontalHeaderItem(8, QTableWidgetItem("Brokerage \n (% per unit)"))
+        stockTable.setHorizontalHeaderItem(9, QTableWidgetItem("GST(%) on \n Brokerage"))
         stockTable.setHorizontalHeaderItem(10, QTableWidgetItem("STT(%)"))
-        stockTable.setHorizontalHeaderItem(11, QTableWidgetItem("GST+STT+ \n Brockerage"))
+        stockTable.setHorizontalHeaderItem(11, QTableWidgetItem("GST+STT+ \n Brokerage"))
         stockTable.setHorizontalHeaderItem(12, QTableWidgetItem("Income \n tax(%)"))
         stockTable.setHorizontalHeaderItem(13, QTableWidgetItem("Net \n Amount"))
         stockTable.setHorizontalHeaderItem(14, QTableWidgetItem("Overall \n Price(per unit)"))
@@ -305,38 +462,85 @@ class purchase_list(QWidget):
         # self.case=self.stockList.itemFromIndex(mdlIdx)
         # print("Case :"+str(self.case.text()))
         row = self.stockList.currentRow()
-        self.invoice = int(self.stockList.item(row, 0).text())
+        # self.invoice = int(self.stockList.item(row, 0).text())
         # print("#"+str(self.invoice))
 
         self.menu = QMenu(self)
         remAct = QAction(QIcon(""), "Delete", self, triggered=self.delStock)
+        dbremAct = QAction(QIcon(""), "DeleteDB", self, triggered=self.del_shareDB)
         # saveAct = QAction(QIcon(""), "Save", self, triggered=self.saveStock)
         addAct = QAction(QIcon(""), "Add Stock", self, triggered=self.new_share)
         # remAct.setStatusTip('Delete stock from database')
         updateAct = QAction(QIcon(""), 'Update', self, triggered=self.update_Stock)
-        refreshAct = QAction(QIcon(""), 'Refresh', self, triggered=self.refresh_Stock)
+        # refreshAct = QAction(QIcon(""), 'Refresh', self, triggered=self.refresh_Stock)
+        dispAct = QAction(QIcon(""), 'Show', self, triggered=self.show_Stock)
         addAct = self.menu.addAction(addAct)
         editStk = self.menu.addAction(updateAct)
+        dispStk = self.menu.addAction(dispAct)
         # saveStk = self.menu.addAction(saveAct)
         remStk = self.menu.addAction(remAct)
-        refrStk = self.menu.addAction(refreshAct)
+        dbremStk = self.menu.addAction(dbremAct)
+        # refrStk = self.menu.addAction(refreshAct)
+
 
         self.menu.exec_(self.sender().viewport().mapToGlobal(pos))
 
-    # def addStock(self):
-    #     agency = self.List_of_agency.currentItem().text()
-    #     print("ag",agency)
-    #     stk=new_stock(agency)
-    #     stk.exec_()
-        # print("adding")
+
+    def show_Stock(self):
+
+        if self.stockList.selectedItems():
+            row_number = self.stockList.currentRow()
+            invoice = self.stockList.item(row_number, 0).text()
+            print(invoice)
+
+
+
+    def del_shareDB(self):
+        agency = self.List_of_agency.currentItem().text()
+        invoice=""
+        if self.stockList.selectedItems():
+            row_number = self.stockList.currentRow()
+            invoice = self.stockList.item(row_number, 0).text()
+            agency = str(agency)
+            delShareDB=delStockDB(invoice)
+            mbox = QMessageBox.question(self, "Delete from table ?", "Display table still showing stock with  ID: "+ str(invoice), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if mbox == QMessageBox.Yes:
+                try:
+                    row_number = self.stockList.currentRow()
+                    invoice = self.stockList.item(row_number, 0).text()
+                    agency = str(agency)
+                    invoice = parse_str(invoice)
+                    del (self.stockInfo[agency][invoice])
+                    self.stockList.removeRow(row_number)
+                    QMessageBox.information(self, "Info", "Stock with reference number " + str(invoice) + " has been deleted from table")
+                except:
+                    QMessageBox.information(self, "Warning", "Stock with reference number " + str(invoice) + " has not been deleted from table")
+
+        item = self.List_of_agency.currentItem()
+        self.get_stocks(item)
+
+
+    def delStock(self):
+        agency = self.List_of_agency.currentItem().text()
+        if self.stockList.selectedItems():
+            row_number = self.stockList.currentRow()
+            invoice = self.stockList.item(row_number, 0).text()
+            agency = str(agency)
+            invoice = parse_str(invoice)
+            del (self.stockInfo[agency][invoice])
+            self.stockList.removeRow(row_number)
+
+            item = self.List_of_agency.currentItem()
+            self.get_stocks(item)
+
 
     def new_share(self, agency=""):
         # con, cur = check_db(db_file)
         row_number=self.stockList.rowCount()
         self.stockList.setRowCount(row_number + 1)
         agency = self.List_of_agency.currentItem().text()
-        print("ag",agency,self.stockList.currentRow())
-        invoice=""
+        # print("ag",agency,self.stockList.currentRow())
+        invoice="0"
 
         if agency:
             add_inp = add_stocks(agency)
@@ -346,18 +550,18 @@ class purchase_list(QWidget):
 
         if add_inp.exec_() == add_inp.Accepted:
             new_row = add_inp.get_inp()
-            print("New : ",new_row)
+            # print("New : ",new_row)
             new_row = list(add_inp.get_inp())
             save_db = new_row[12]
             del new_row[-1]
 
             if save_db:
-                print(save_db)
+                # print(save_db)
                 # check_msg()
-                invoice=saveStockDB(new_row, invoice)
-
-            print('New row:', row_number)
-            print(invoice, new_row)
+                invoice=saveStockDB(new_row)
+            #
+            # print('New row:', row_number)
+            # print(invoice, new_row)
 
             # print(type(updated_row))
             # self.add_update_row(updated_row,row,invoice)
@@ -376,27 +580,47 @@ class purchase_list(QWidget):
             new_row.insert(13, str(output_data[1]))
             new_row.insert(14, str(output_data[3]))
             new_row.insert(15, str(output_data[4]))
+
+
             # print('Updated row:',row_number)
             # print(invoice,updated_row)
             # print(output_data)
-            new_row[0] = invoice
-            # print(updated_row)
+            # new_row[0] = invoice
+            # print(new_row)
+            for i in range(5, len(new_row) - 1):
+                data = new_row[i]
+                # print(i,type(data),type(parse_str(data)),data )
+                new_row[i] = parse_str(data)
 
-            for column_number, data in enumerate(new_row):
-                self.stockList.setSortingEnabled(False)
-                self.stockList.setItem(row_number, column_number, QTableWidgetItem(str(data)))
+            agency = str(agency)
+            inv = parse_str(invoice)
+            # data1 = self.stockInfo[agency][inv]
+            update1 = new_row[1:]
 
-            table_sort_color(self.stockList)
+            self.stockInfo[agency][inv] = tuple(update1)
+            data2 = self.stockInfo[agency][inv]
+
+            # print(invoice)
+            # # print(data1)
+            # print(update1)
+            # print(data2)
+            # print(new_row)
+            #
+            # exit()
+
+            # for column_number, data in enumerate(new_row):
+            #     self.stockList.setSortingEnabled(False)
+            #     self.stockList.setItem(row_number, column_number, QTableWidgetItem(str(data)))
+
+            # table_sort_color(self.stockList)
         else:
             pass
             # Message box
 
+        item = self.List_of_agency.currentItem()
+        self.get_stocks(item)
 
-    def delStock(self):
-        print("del")
 
-    def saveStock(self):
-        print("save")
 
     def update_Stock(self,item):
         agency = self.List_of_agency.currentItem().text()
@@ -418,14 +642,13 @@ class purchase_list(QWidget):
                del updated_row[-1]
 
                if save_db :
-                  print(save_db)
+                  # print(save_db)
                   # check_msg()
+                  id=saveStockDB(updated_row,invoice)
 
-                  saveStockDB(updated_row,invoice)
 
-
-               print('Updated row:', row_number)
-               print(invoice, updated_row)
+               # print('Updated row:', row_number)
+               # print(invoice, updated_row)
 
                # print(type(updated_row))
                # self.add_update_row(updated_row,row,invoice)
@@ -440,87 +663,73 @@ class purchase_list(QWidget):
                # print( price, Numb, brock, gst, stt, itax)
                input_data = price, Numb, brock, gst, stt, itax
                output_data = self.stock_calc(input_data)
-               updated_row.insert(7,str(output_data[0]))
-               updated_row.insert(11,str(output_data[2]))
-               updated_row.insert(13,str(output_data[1]))
-               updated_row.insert(14,str(output_data[3]))
-               updated_row.insert(15,str(output_data[4]))
+               updated_row.insert(7,output_data[0])
+               updated_row.insert(11,output_data[2])
+               updated_row.insert(13,output_data[1])
+               updated_row.insert(14,output_data[3])
+               updated_row.insert(15,output_data[4])
                # print('Updated row:',row_number)
                # print(invoice,updated_row)
                # print(output_data)
-               updated_row[0]=invoice
+               for i in range(5,len(updated_row)-1):
+                   data=updated_row[i]
+                   # print(i,type(data),type(parse_str(data)),data )
+                   updated_row[i]=parse_str(data)
+
+               agency = str(agency)
+               inv = parse_str(invoice)
+               data1 = self.stockInfo[agency][inv]
+               update1=updated_row[1:]
+               self.stockInfo[agency][inv]=tuple(update1)
+               data2 = self.stockInfo[agency][inv]
+
+               updated_row[0] = invoice
+
+               # print(invoice)
+               # print(data1)
+               # print(update1)
+               # print(data2)
                # print(updated_row)
+               #
+               # exit()
 
-               for column_number, data in enumerate(updated_row):
-                   self.stockList.setSortingEnabled(False)
-                   self.stockList.setItem(row_number, column_number, QTableWidgetItem(str(data)))
-
-               table_sort_color(self.stockList)
+               # for column_number, data in enumerate(updated_row):
+               #     self.stockList.setSortingEnabled(False)
+               #     self.stockList.setItem(row_number, column_number, QTableWidgetItem(str(data)))
+               #
+               # table_sort_color(self.stockList)
 
             else:
                 pass
                 # Message box
 
-    # def add_update_row(self,row_data,row="",invoice=""):
-    #
-    #     rowList = list(row_data)
-    #     if row != "" and invoice !="":
-    #         row_number=row
-    #         invoiceCode=invoice
-    #     else:
-    #        row_number = self.stockList.rowCount()
-    #
-    #
-    #     rowList.insert(0, key)
-    #     row_data = tuple(rowList)
-    #
-    #     for column_number, data in enumerate(row_data):
-    #         self.stockList.setSortingEnabled(False)
-    #         self.stockList.setItem(row_number, column_number, QTableWidgetItem(str(data)))
+            item = self.List_of_agency.currentItem()
+            self.get_stocks(item)
 
+
+    def calculate_sum(self,agency=""):
+
+        currentAgency=self.stockInfo[agency]
+        net_invetment=0.0
+        net_extra=0.0
+        for key,value in  currentAgency.items():
+            value=list(value)
+            # print("#",value)
+            net_invetment=net_invetment+value[12]
+            net_extra=net_extra+value[10]
+
+            # print(key,value)
+        agencyInvestmt="{:.{}f}".format(net_invetment, 3)
+        agencyCharges="{:.{}f}".format(net_extra, 3)
+        # self.totalInvestment="{:.{}f}".format(net_invetment, 3)
+        # print(net_invetment,net_extra)
+
+
+        return agencyInvestmt,agencyCharges
 
 
     def refresh_Stock(self):
         print("refresh")
 
 
-
-    def layouts(self):
-        self.mainLayout=QHBoxLayout()
-        self.horizontalSplitter=QSplitter(Qt.Horizontal)
-        self.leftVsplitter=QSplitter(Qt.Vertical)
-        self.rightVsplitter=QSplitter(Qt.Vertical)
-
-        self.buttons=QWidget()
-        self.controlLayout=QHBoxLayout()
-        # self.controlLayout.addStretch()
-        self.controlLayout.addWidget(self.refreshAll)
-        self.controlLayout.addWidget(self.calculate)
-        self.controlLayout.addWidget(self.save2db)
-        self.buttons.setLayout(self.controlLayout)
-
-        self.leftLayout=QVBoxLayout()
-        self.rightLayout=QVBoxLayout()
-        self.leftTopGroupBox=QGroupBox("Agency List")
-        self.rightTopGroupBox=QGroupBox("Stock List")
-        # self.leftTop.addWidget(self.treeListAgency)
-        # self.leftVsplitter.a
-        self.leftLayout.addWidget(self.List_of_agency)
-        self.rightLayout.addWidget(self.buttons,4)
-        self.rightLayout.addWidget(self.stockList,96)
-        self.leftTopGroupBox.setLayout(self.leftLayout)
-        self.rightTopGroupBox.setLayout(self.rightLayout)
-
-        self.leftVsplitter.addWidget(self.leftTopGroupBox)
-        self.rightVsplitter.addWidget(self.rightTopGroupBox)
-
-        self.horizontalSplitter.addWidget(self.leftVsplitter)
-        self.horizontalSplitter.addWidget(self.rightVsplitter)
-        self.horizontalSplitter.setStretchFactor(0, 10)
-        self.horizontalSplitter.setStretchFactor(1, 90)
-        self.horizontalSplitter.setContentsMargins(0, 0, 0, 0)
-        self.horizontalSplitter.handle(0)
-
-        self.mainLayout.addWidget(self.horizontalSplitter)
-        self.setLayout(self.mainLayout)
 

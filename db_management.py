@@ -71,6 +71,7 @@ def read_all_stocks():
         rowList = list(all_row_data[2:])
         row_data = tuple(rowList)
         # print(row_data)
+        # stocksDB.setdefault(agency,ref)
         stocksDB[agency][ref]=row_data
 
     ListAgency = []
@@ -105,22 +106,22 @@ def read_sales_db(db_file,sale_list):
 
 
 
-
-# def add_stock(db_file):
-#     con, cur = check_db(db_file)
-#     #print(con,cur)
-#     add_stocks(con,cur)
-
-def check_msg():
-    msgBox = QMessageBox()
-    msgBox.setWindowTitle("database file missing")
-    msgBox.setText('database file needs to present in current location')
-    msgBox.setInformativeText("Please keep the db file"
-                              "in the running folder"
-                              "and try once again")
-    # msgBox.setWindowIcon(QIcon(""))
-    msgBox.setIcon(QMessageBox.Critical)
-    msgBox.exec()
+#
+# # def add_stock(db_file):
+# #     con, cur = check_db(db_file)
+# #     #print(con,cur)
+# #     add_stocks(con,cur)
+#
+# def check_msg():
+#     msgBox = QMessageBox()
+#     msgBox.setWindowTitle("database file missing")
+#     msgBox.setText('database file needs to present in current location')
+#     msgBox.setInformativeText("Please keep the db file"
+#                               "in the running folder"
+#                               "and try once again")
+#     # msgBox.setWindowIcon(QIcon(""))
+#     msgBox.setIcon(QMessageBox.Critical)
+#     msgBox.exec()
 
 
 def gen_id():
@@ -170,7 +171,7 @@ def saveStockDB(row_data,stock_id=""):
        stock_id=gen_id()
        save_mode = "append"
 
-    print(stock_id)
+    # print(stock_id)
 
     agency= row_data[0]
     exchange = row_data[1]
@@ -188,13 +189,13 @@ def saveStockDB(row_data,stock_id=""):
     defaults=default_parameters()
 
 
-    if brockerage != "":
+    if brockerage == "":
         brockerage = defaults[0]
-    if gst != "":
+    if gst == "":
         gst = defaults[1]
-    if stt != "":
+    if stt == "":
         stt = defaults[2]
-    if itax != "":
+    if itax == "":
         itax = defaults[3]
 
     if save_mode == "append":
@@ -269,43 +270,54 @@ def saveStockDB(row_data,stock_id=""):
     return stock_id
 
 
-def delStock(self):
+def delStockDB(invoice):
     con, cur = check_db(db_file)
-    # print("Removing",self.invoice)
-    if self.stockList.selectedItems():
-        row = self.stockList.currentRow()
-        invoice = self.stockList.item(row, 0).text()
 
-        # query=("SELECT * FROM purchase WHERE id=?")
-        # stock=cur.execute(query,(invoice)).fetchone()
-        mbox = QMessageBox.question(self, "Warning",
-                                    "Are you sure to delete stock with reference number " + invoice + " ?",
-                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        if mbox == QMessageBox.Yes:
-            try:
-                query = "DELETE FROM purchase WHERE id=?"
-                cur.execute(query, (invoice,))
-                con.commit()
-                self.stockList.removeRow(row)
-                QMessageBox.information(self, "Info",
-                                        "Stock with reference number " + invoice + " has been deleted..")
-                # self.refresh()
-                # self.update_Stock()
-                # self.showStocks()
-                # self.close()
-            except:
-                QMessageBox.information(self, "Warning",
-                                        "Stock with reference number " + invoice + " has not been deleted..")
+    msgBox = QMessageBox()
+    msgBox.setWindowTitle("Warning")
+    msgBox.setText("Are you sure to delete stock with reference number " + invoice + " ?")
+    msgBox.setInformativeText("Stock  information will be "
+                              "permanatly removed from the "
+                              "database !")
+    # msgBox.setWindowIcon(QIcon(""))
+    msgBox.setIcon(QMessageBox.Question)
+    msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+    msgBox.setDefaultButton(QMessageBox.No)
+    buttonY = msgBox.button(QMessageBox.Yes)
+
+
+    buttonY = msgBox.button(QMessageBox.Yes)
+    # buttonY.setText('Evet')
+    # buttonN = box.button(QtGui.QMessageBox.No)
+    # buttonN.setText('Iptal')
+    msgBox.exec_()
+
+    if msgBox.clickedButton() == buttonY:
+        # if mbox == QMessageBox.Yes:
+        try:
+            query = "DELETE FROM purchase WHERE id=?"
+            cur.execute(query, (invoice,))
+            con.commit()
+
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("Deleted !")
+            msgBox.setText("Stock with reference number " + invoice + " has been deleted..")
+            msgBox.setIcon(QMessageBox.Information)
+            msgBox.exec_()
+        except:
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("Warning")
+            msgBox.setText("Stock with reference number " + invoice + " has not been deleted..")
+            msgBox.setIcon(QMessageBox.warning)
+            msgBox.exec_()
     else:
-        QMessageBox.information(self, "Warning !!!", "Please select the stock to be deleted")
+        msgBox = QMessageBox()
+        msgBox.setWindowTitle("Aborted")
+        msgBox.setText("Selected  stock (id: "+invoice +") has not been deleted")
+        msgBox.setIcon(QMessageBox.Information)
+        msgBox.exec_()
 
-def editStock(self):
-    print("Editing", self.invoice)
 
-def update_Stock(self):
-    pass
-    # self.refresh()
-    # print("Editing")
 
 def new_stock(agency=""):
     con, cur = check_db(db_file)
@@ -319,18 +331,22 @@ def new_stock(agency=""):
 class add_stocks(QDialog):
 
     # def __init__(self,con,cur,agency=""):
-    def __init__(self,agency="",parent=None):
+    def __init__(self,agency="",dbsave="",parent=None):
         super(add_stocks,self).__init__(parent)
         self.setWindowModality(Qt.ApplicationModal)
         self.setWindowTitle("Add stock")
         # self.con=con
         # self.cur=cur
+        self.dbsave=False
         self.agency0=""
         if agency:
             self.agency0=agency
 
+        if dbsave:
+           self.dbsave = True
+
         # self.setWindowIcon(QIcon('icons/icon.ico'))
-        self.setGeometry(450,150,450,350)
+        self.setGeometry(450,150,450,450)
         self.setFixedSize(self.size())
 
         self.UI()
@@ -410,8 +426,11 @@ class add_stocks(QDialog):
         self.buttonBox.rejected.connect(self.reject)
 
         self.saveDB = QCheckBox("Update to Database:")
-        self.saveDB.stateChanged.connect(self.state_changed)
-
+        if self.dbsave:
+            self.saveDB.setChecked(True)
+            self.saveDB.setDisabled(True)
+        else:
+            self.saveDB.stateChanged.connect(self.state_changed)
 
         if self.agency0:
             self.agencyEntry.setText(self.agency0)
@@ -583,7 +602,7 @@ class update_stocks(QDialog):
         self.stock_data=stock_data
 
         # self.setWindowIcon(QIcon('icons/icon.ico'))
-        self.setGeometry(450,150,450,350)
+        self.setGeometry(450,150,450,450)
         self.setFixedSize(self.size())
 
         self.UI()

@@ -10,7 +10,7 @@ from PyQt5.QtCore import Qt,QPoint,pyqtSlot
 from purchase import purchase_list
 from sales import sold_list
 from profit_list import  gain_shares
-from db_management import read_sales_db,read_stock_db,check_db,add_stocks,set_defaults
+from db_management import check_db,set_defaults,add_stocks,saveStockDB
 
 db_file = "MyInvestment.db"
 
@@ -37,15 +37,15 @@ class MyMainWindow(QMainWindow):
         tb.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
 
         tb.addSeparator()
-        addShare=QAction(QIcon(""),"addStock",self)
-        addShare.triggered.connect(self.new_share)
+        addShare=QAction(QIcon(""),"addStockDB",self)
+        addShare.triggered.connect(self.add_stockDB)
         addShare.setStatusTip("Adding newly purchased stock")
         addShare.setToolTip("Adding newly purchased stock")
         tb.addAction(addShare)
         tb.addSeparator()
 
-        delShare = QAction(QIcon(""), "delStock", self)
-        delShare.triggered.connect(self.del_share)
+        delShare = QAction(QIcon(""), "delStockDB", self)
+        delShare.triggered.connect(self.del_shareDB)
         delShare.setStatusTip("Removing stock from list")
         delShare.setToolTip("Removing stock from list")
         tb.addAction(delShare)
@@ -66,16 +66,21 @@ class MyMainWindow(QMainWindow):
         tb.addSeparator()
 
 
-    def new_share(self,agency=""):
-        # con, cur = check_db(db_file)
-        if agency:
-            self.stk=add_stocks(agency)
-        else:
-            self.stk = add_stocks()
-        # self.stck.exec_()
+    def add_stockDB(self):
+        agency=""
+        invoice=""
+        db_save=True
+        add_inp = add_stocks(agency,db_save)
+
+        if add_inp.exec_() == add_inp.Accepted:
+            new_stock = add_inp.get_inp()
+            invoice = saveStockDB(new_stock, invoice)
+            # print("New : ",invoice,new_stock)
 
 
-    def del_share(self):
+    def del_shareDB(self):
+        # self.del_share=purchase_list.del_shareDB()
+        # print(self.del_share)
         pass
 
     def default_setting(self):
@@ -88,15 +93,24 @@ class MyMainWindow(QMainWindow):
         self.setCentralWidget( self.tabs)
 
     def refresh(self):
-        self.listAgency, self.stockDB = self.read_all_stocks()
-        self.List_of_agency=self.get_agency_list(self.listAgency)
+        self.LoadAll()
+        # self.listAgency, self.stockDB = self.read_all_stocks()
+        # self.List_of_agency=self.get_agency_list(self.listAgency)
 
 
     def widgets(self):
 
-        self.tabs.addTab(purchase_list(),"Investment")
-        self.tabs.addTab(sold_list(),"Sold")
-        self.tabs.addTab(gain_shares(),"Gain")
+        # self.tabs.addTab(purchase_list(),"Investment")
+        # self.tabs.addTab(sold_list(),"Sold")
+        # self.tabs.addTab(gain_shares(),"Gain")
+        self.LoadAll()
+
+    def LoadAll(self):
+        self.tabs.clear()
+        self.tabs.addTab(purchase_list(), "Investment")
+        self.tabs.addTab(sold_list(), "Sold")
+        self.tabs.addTab(gain_shares(), "Gain")
+
 
 def main():
     APP=QApplication(sys.argv)
