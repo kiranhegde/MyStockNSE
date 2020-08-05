@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt,QPoint,pyqtSlot,QDateTime,QVariant
 import ast
 from collections import defaultdict
 from db_management import read_db,check_db,add_stocks,update_stocks,saveStockDB,delStockDB,show_stock_info
+from get_nse_data import download_data_for_month
 
 
 
@@ -49,40 +50,49 @@ def delete_keys_from_dict(d, to_delete):
 # https: // stackoverflow.com / questions / 12009134 / adding - widgets - to - qtablewidget - pyqt
 def set_column_sort(table,columnIndex):
 
-
-
     if table.rowCount() > 0:
         for i in range(table.rowCount()):
             # print("#",i)
             for j in columnIndex:
-                value=(table.item(i,j)).text()
-                item = QTableWidgetItem()
 
-                # if type(value) == QDateTime:
-                #     val=QDateTime.fromString(value,"ddmmyyyy")
-                #     item.setData(Qt.DisplayRole, QVariant(val))
-                #     print(i,j,val)
-                # else:
-                val = parse_str(value)
-                item.setData(Qt.DisplayRole, val)
+                if isinstance(table.item(i, j),type(None)):
+                    pass
+                else:
+                    value = (table.item(i, j)).text()
+                    # print("#"+str(j),value)
 
-                table.setItem(i,j,item)
-                table.setEditTriggers(QTableWidget.NoEditTriggers)
-                # table.itemDoubleClicked.connect(self.edit_item)
-                # print(j,value,type(value))
+                    item = QTableWidgetItem()
+
+                    # if type(value) == QDateTime:
+                    #     val=QDateTime.fromString(value,"ddmmyyyy")
+                    #     item.setData(Qt.DisplayRole, QVariant(val))
+                    #     print(i,j,val)
+                    # else:
+                    val = parse_str(value)
+                    item.setData(Qt.DisplayRole, val)
+
+                    table.setItem(i,j,item)
+                    table.setEditTriggers(QTableWidget.NoEditTriggers)
+                    # table.itemDoubleClicked.connect(self.edit_item)
+                    # print(j,value,type(value))
 
 def table_sort_color(table):
+    # Sort column
     columnIndex1 = []
     columnIndex1.clear()
-    columnIndex1 = [i for i in range(6, 16)]
+    columnIndex1 = [i for i in range(4,12)]
     columnIndex1.insert(0, 0)
     set_column_sort(table, columnIndex1)
     table.sortByColumn(2, Qt.AscendingOrder)
 
+    # Color column background
     columnIndex = []
     columnIndex.clear()
-    columnIndex = [2, 5, 14, 15]
+    columnIndex = [2, 5,9,10]
     setColortoColumn(table, columnIndex, QColor(0, 255, 0))
+    columnIndex.clear()
+    columnIndex = [11,12]
+    setColortoColumn(table, columnIndex, QColor(255, 0, 0))
     columnIndex.clear()
     table.setSortingEnabled(True)
 
@@ -96,8 +106,11 @@ def setColortoColumn(table, columnIndex, color):
         for i in range(table.rowCount()):
             for j in columnIndex:
                 # table.setItemDelegateForColumn(i,FloatDelegate(3))
-                table.item(i, j).setBackground(color)
-                table.item(i, j).setFont(fnt)
+                if isinstance(table.item(i, j), type(None)):
+                    pass
+                else:
+                    table.item(i, j).setBackground(color)
+                    table.item(i, j).setFont(fnt)
 
 
 
@@ -154,10 +167,14 @@ class purchase_list(QWidget):
         # fnt.setFamily("Arial")
         # fnt.QColor(0, 255, 0)
 
-        self.totalInvestment = QLabel("0")
-        self.totalInvestment.setFont(fnt)
-        self.totalCharges = QLabel("0")
-        self.totalCharges.setFont(fnt)
+        # self.totalInvestment = QLabel("0")
+        # self.totalInvestment.setFont(fnt)
+        # self.totalCharges = QLabel("0")
+        # self.totalCharges.setFont(fnt)
+
+
+        self.agencyGain = QLabel("0")
+        self.agencyGain.setFont(fnt)
 
         self.agencyInvestmt=QLabel("0")
         self.agencyInvestmt.setFont(fnt)
@@ -167,7 +184,11 @@ class purchase_list(QWidget):
         self.agencyName = QLabel("AgencyName")
         self.agencyName.setFont(fnt)
 
-
+        self.nse = QPushButton('NSE')
+        self.nse.setGeometry(10,1,100,25)
+        # self.nse.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.nse.clicked.connect(self.get_nse_data)
+        self.nse.setToolTip('Get latest stock price \n from NSE')
 
         # https: // programming.vip / docs / pyqt5 - quick - start - pyqt5 - basic - window - components.html
 
@@ -203,6 +224,57 @@ class purchase_list(QWidget):
         self.List_of_agency.setCurrentItem(item)
         self.get_stocks(item)
 
+    def get_nse_data(self):
+        delta=0
+        n_rows = self.stockList.rowCount()
+        j=2
+        jj=8
+        k=10
+        kk=11
+
+        total_gain=0.0
+        for i in range(n_rows):
+            symbol=self.stockList.item(i,j).text()
+            myPrice=self.stockList.item(i,jj).text()
+            Numb=1 #self.stockList.item(i,jj).text()
+            Quantity=self.stockList.item(i,5).text()
+            brock=0.4
+            gst=18.0
+            stt=0.1
+            itax=30.0
+            # print(symbol)
+            try:
+                current=download_data_for_month(symbol,delta)
+
+                price=current
+                input_data = price, Numb, brock, gst, stt, itax
+                output_data = self.stock_sale_calc(input_data)
+                FinalPrice=output_data[1]
+
+                print(symbol,":",Quantity,current,output_data)
+                diff =0.0
+                Total=0.0
+                if current != 0:
+                    # diff=parse_str(current)-parse_str(myPrice)
+                    diff=parse_str(FinalPrice)-parse_str(myPrice)
+                    diff= float("{:.2f}".format(diff))
+                    Total=float(Quantity)*diff
+                    Total=float("{:.2f}".format(Total))
+                    total_gain=total_gain+Total
+
+                self.stockList.setItem(i,k, QTableWidgetItem(str(current)))
+                self.stockList.setItem(i,kk, QTableWidgetItem(str(diff)))
+                self.stockList.setItem(i,kk+1, QTableWidgetItem(str(Total)))
+
+            except:
+
+                print(symbol,"not found")
+
+        table_sort_color(self.stockList)
+
+        self.agencyGain.setText(str(total_gain))
+
+
 
 
     def layouts(self):
@@ -213,8 +285,9 @@ class purchase_list(QWidget):
         self.rightBottomLayout=QHBoxLayout()
 
         # self.buttons=QWidget()
-        # self.controlLayout=QHBoxLayout()
-        # # self.controlLayout.addStretch()
+        self.controlLayout=QHBoxLayout()
+        # self.controlLayout.addStretch()
+        self.controlLayout.addWidget(self.nse)
         # self.controlLayout.addWidget(self.refreshAll)
         # self.controlLayout.addWidget(self.calculate)
         # self.controlLayout.addWidget(self.save2db)
@@ -232,6 +305,9 @@ class purchase_list(QWidget):
         self.agency_summaryLayout.addWidget(self.agencyCharges,0,2)
         self.agency_summaryLayout.addWidget(QLabel('Total Investment : '), 0, 3)
         self.agency_summaryLayout.addWidget(self.agencyInvestmt, 0, 4)
+        self.agency_summaryLayout.addWidget(QLabel('Total Gain[Rs] : '), 0, 5)
+        self.agency_summaryLayout.addWidget(self.agencyGain, 0, 6)
+
 
         self.overallSummaryLayout=QGridLayout()
         self.overallSummaryLayout.addWidget(QLabel('Total tax and brokerage:'), 0, 0)
@@ -246,8 +322,12 @@ class purchase_list(QWidget):
         self.overallsummaryGroupBox = QGroupBox('Total Investment')
         self.overallsummaryGroupBox.setLayout(self.overallSummaryLayout)
 
-        self.rightBottomLayout.addWidget(self.summaryGroupBox)
-        self.rightBottomLayout.addWidget(self.overallsummaryGroupBox)
+        self.buttonGroupBox=QGroupBox("Internet")
+        self.buttonGroupBox.setLayout(self.controlLayout)
+
+        self.rightBottomLayout.addWidget(self.summaryGroupBox,47)
+        self.rightBottomLayout.addWidget(self.overallsummaryGroupBox,47)
+        self.rightBottomLayout.addWidget(self.buttonGroupBox,6)
         self.rightBottomWidget=QWidget()
         self.rightBottomWidget.setLayout(self.rightBottomLayout)
 
@@ -323,12 +403,34 @@ class purchase_list(QWidget):
             self.stockList.setRowCount(row_number + 1)
             rowList = list(val)
             rowList.insert(0,key)
-            row_data = tuple(rowList)
+            new_table=[]
+            new_table=rowList[0:4]
+            new_table.insert(5,rowList[5])
+            new_table.insert(6,rowList[6])
+            new_table.insert(7,rowList[11])
+            new_table.insert(8,rowList[13])
+            new_table.insert(9,rowList[14])
+            new_table.insert(10,rowList[15])
+            new_table.insert(11,0)
+            new_table.insert(12,0)
+            new_table.insert(13,0)
+            new_table.insert(14,rowList[-1])
+
+            # print(new_table)
+            # exit()
+            # row_data = tuple(rowList)
+            row_data = tuple(new_table)
+            # print(row_data)
+
 
             for column_number, data in enumerate(row_data):
                 self.stockList.setSortingEnabled(False)
                 self.stockList.setItem(row_number, column_number, QTableWidgetItem(str(data)))
 
+
+
+        # print(type(self.stockList))
+        # exit()
 
         self.stockList.setSortingEnabled(True)
         table_sort_color(self.stockList)
@@ -337,6 +439,7 @@ class purchase_list(QWidget):
 
         self.agencyInvestmt.setText(str(output[0]))
         self.agencyCharges.setText(str(output[1]))
+        # self.agencyGain.setText(str(output[2]))
         # print(self.agencyCharges.text(), self.agencyInvestmt.text())
 
 
@@ -370,7 +473,7 @@ class purchase_list(QWidget):
                 comments = rowList[10]
 
                 input_data = price, Numb, brock, gst, stt, itax
-                output_data = self.stock_calc(input_data)
+                output_data = self.stock_purchase_calc(input_data)
                 rowList.insert(6, output_data[0])
                 rowList.insert(11, output_data[1])
                 rowList.insert(10, output_data[2])
@@ -384,7 +487,7 @@ class purchase_list(QWidget):
 
 
 
-    def stock_calc(self, input_data):
+    def stock_purchase_calc(self, input_data):
         price, Quant, Brockerage, gst, stt, itax = input_data
         # print( price,Quant,Brockerage,gst,stt,itax)
         price=parse_str(price)
@@ -413,27 +516,58 @@ class purchase_list(QWidget):
 
         return contr_amount, net_amount, gst_stt_brk, actual_price, Zero_profit
 
+    def stock_sale_calc(self, input_data):
+        price, Quant, Brockerage, gst, stt, itax = input_data
+        # print( price,Quant,Brockerage,gst,stt,itax)
+        price = parse_str(price)
+        Quant = parse_str(Quant)
+        Brockerage = parse_str(Brockerage) / 100.0
+        gst = parse_str(gst) / 100.0
+        stt = parse_str(stt) / 100.0
+        itax = parse_str(itax) / 100.0
+
+        unit_brockerage = price * Brockerage
+        net_rate = price - unit_brockerage
+        net_total = net_rate * Quant
+        taxable_brockerage = unit_brockerage * Quant
+        gst_brockerage = taxable_brockerage * gst
+        stt_net_total = stt * net_total
+        contr_amount = price * Quant
+        net_amount = net_total - gst_brockerage - stt_net_total
+        gst_stt_brk = net_amount - contr_amount
+        actual_price = net_amount / Quant
+
+        contr_amount = round(contr_amount, 3)
+        net_amount = round(net_amount, 3)
+        gst_stt_brk = round(gst_stt_brk, 3)
+        actual_price = round(actual_price, 3)
+        Zero_profit = round((actual_price + gst_stt_brk / Quant) * 1.0001, 3)
+
+        return contr_amount, net_amount, gst_stt_brk, actual_price, Zero_profit
+
     def tabulateStocks(self):
         stockTable = QTableWidget()
-        stockTable.setColumnCount(17)
+        stockTable.setColumnCount(14)
         stockTable.setHorizontalHeaderItem(0, QTableWidgetItem("Reference \n Number"))
         stockTable.setHorizontalHeaderItem(1, QTableWidgetItem("Exchange"))
         stockTable.setHorizontalHeaderItem(2, QTableWidgetItem("Equity"))
         stockTable.setHorizontalHeaderItem(3, QTableWidgetItem("Trade Date"))
-        stockTable.setHorizontalHeaderItem(4, QTableWidgetItem("Settlement \n Date"))
-        stockTable.setHorizontalHeaderItem(5, QTableWidgetItem("Trade \n Price"))
-        stockTable.setHorizontalHeaderItem(6, QTableWidgetItem("Quantity"))
-        stockTable.setHorizontalHeaderItem(7, QTableWidgetItem("Contract \n Amount"))
-        stockTable.setHorizontalHeaderItem(8, QTableWidgetItem("Brokerage \n (% per unit)"))
-        stockTable.setHorizontalHeaderItem(9, QTableWidgetItem("GST(%) on \n Brokerage"))
-        stockTable.setHorizontalHeaderItem(10, QTableWidgetItem("STT(%)"))
-        stockTable.setHorizontalHeaderItem(11, QTableWidgetItem("GST+STT+ \n Brokerage"))
-        stockTable.setHorizontalHeaderItem(12, QTableWidgetItem("Income \n tax(%)"))
-        stockTable.setHorizontalHeaderItem(13, QTableWidgetItem("Net \n Amount"))
-        stockTable.setHorizontalHeaderItem(14, QTableWidgetItem("Overall \n Price(per unit)"))
-        stockTable.setHorizontalHeaderItem(15, QTableWidgetItem("Zero Profit \n Price(per unit)"))
-        stockTable.setHorizontalHeaderItem(16, QTableWidgetItem("Remarks"))
-
+        # stockTable.setHorizontalHeaderItem(4, QTableWidgetItem("Settlement \n Date"))
+        stockTable.setHorizontalHeaderItem(4, QTableWidgetItem("Trade \n Price"))
+        stockTable.setHorizontalHeaderItem(5, QTableWidgetItem("Quantity"))
+        # stockTable.setHorizontalHeaderItem(7, QTableWidgetItem("Contract \n Amount"))
+        # stockTable.setHorizontalHeaderItem(8, QTableWidgetItem("Brokerage \n (% per unit)"))
+        # stockTable.setHorizontalHeaderItem(9, QTableWidgetItem("GST(%) on \n Brokerage"))
+        # stockTable.setHorizontalHeaderItem(10, QTableWidgetItem("STT(%)"))
+        stockTable.setHorizontalHeaderItem(6, QTableWidgetItem("GST+STT+ \n Brokerage"))
+        # stockTable.setHorizontalHeaderItem(12, QTableWidgetItem("Income \n tax(%)"))
+        stockTable.setHorizontalHeaderItem(7, QTableWidgetItem("Net \n Amount"))
+        stockTable.setHorizontalHeaderItem(8, QTableWidgetItem("Overall \n unit Price"))
+        stockTable.setHorizontalHeaderItem(9, QTableWidgetItem("Zero Profit \n unit Price"))
+        stockTable.setHorizontalHeaderItem(10, QTableWidgetItem("Current\n unit Price"))
+        stockTable.setHorizontalHeaderItem(11, QTableWidgetItem("Gain \n per unit "))
+        stockTable.setHorizontalHeaderItem(12, QTableWidgetItem("Overall \n Gain "))
+        stockTable.setHorizontalHeaderItem(13, QTableWidgetItem("Remarks"))
         stockTable.setAlternatingRowColors(True)
 
         header = stockTable.horizontalHeader()
@@ -613,7 +747,7 @@ class purchase_list(QWidget):
 
             # print( price, Numb, brock, gst, stt, itax)
             input_data = price, Numb, brock, gst, stt, itax
-            output_data = self.stock_calc(input_data)
+            output_data = self.stock_purchase_calc(input_data)
             new_row.insert(7, str(output_data[0]))
             new_row.insert(11, str(output_data[2]))
             new_row.insert(13, str(output_data[1]))
@@ -701,7 +835,7 @@ class purchase_list(QWidget):
 
                # print( price, Numb, brock, gst, stt, itax)
                input_data = price, Numb, brock, gst, stt, itax
-               output_data = self.stock_calc(input_data)
+               output_data = self.stock_purchase_calc(input_data)
                updated_row.insert(7,output_data[0])
                updated_row.insert(11,output_data[2])
                updated_row.insert(13,output_data[1])
@@ -745,21 +879,27 @@ class purchase_list(QWidget):
             item = self.List_of_agency.currentItem()
             self.get_stocks(item)
 
+    def calculate_total_gain(self):
+        pass
+
 
     def calculate_sum(self,agency=""):
 
         currentAgency=self.stockInfo[agency]
         net_invetment=0.0
         net_extra=0.0
+        # net_gain=0.0
         for key,value in  currentAgency.items():
             value=list(value)
             # print("#",value)
             net_invetment=net_invetment+value[12]
+            # net_gain=net_gain+value[13]
             net_extra=net_extra+value[10]
 
             # print(key,value)
         agencyInvestmt="{:.{}f}".format(net_invetment, 3)
         agencyCharges="{:.{}f}".format(net_extra, 3)
+        # agencyGain="{:.{}f}".format(net_gain, 3)
         # self.totalInvestment="{:.{}f}".format(net_invetment, 3)
         # print(net_invetment,net_extra)
 

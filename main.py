@@ -65,6 +65,17 @@ class MyMainWindow(QMainWindow):
         tb.addAction(defaultVal)
         tb.addSeparator()
 
+        # defaultVal = QAction(QIcon(""), "getCurrent", self)
+        # defaultVal.triggered.connect(self.fetch_from_nse)
+        # defaultVal.setStatusTip("default paramter settings")
+        # defaultVal.setToolTip("default paramter settings")
+        # tb.addAction(defaultVal)
+        # tb.addSeparator()
+
+    def fetch_from_nse(self):
+        pass
+
+
 
     def add_stockDB(self):
         agency=""
