@@ -72,10 +72,6 @@ class MyMainWindow(QMainWindow):
         # tb.addAction(defaultVal)
         # tb.addSeparator()
 
-    def fetch_from_nse(self):
-        pass
-
-
 
     def add_stockDB(self):
         agency=""
