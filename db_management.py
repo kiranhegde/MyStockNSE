@@ -51,6 +51,11 @@ def check_db(db_file):
 def read_db():
     listAgency, stockDB = read_all_stocks()
     # List_of_agency=get_agency_list(listAgency)
+    #
+    # print('DB')
+    # print(listAgency)
+    # print(stockDB)
+    # exit()
     return listAgency, stockDB
 
 
@@ -131,6 +136,10 @@ def gen_id():
     for all_row_data in stock:
         id_list.append(all_row_data[0])
 
+    stock = cur.execute("SELECT * FROM sale")
+    for all_row_data in stock:
+        id_list.append(all_row_data[0])
+
     # print(id_list)
     stock_id = f'{random.randrange(1000, 10 ** 6)}'
     m = len(id_list) - 1
@@ -144,7 +153,7 @@ def gen_id():
         else:
             break
 
-    return stock_id
+    return int(stock_id)
 
 def default_parameters():
     con, cur = check_db(db_file)
@@ -162,16 +171,93 @@ def default_parameters():
 
 
 
-def saveStockDB(row_data,stock_id=""):
+def saveStockSaleDB(row_data,invoice):
+
+    con, cur = check_db(db_file)
+    # stock = cur.execute("SELECT * FROM sale")
+    stock_id = gen_id()
+
+    agency= row_data[0]
+    exchange = row_data[1]
+    equity = row_data[2]
+    Bdate = row_data[3]
+    Bprice = row_data[4]
+    Tdate = row_data[5]
+    Sdate = row_data[6]
+    TPrice = row_data[7]
+    quantity = row_data[8]
+    brokerage = row_data[9]
+    gst = row_data[10]
+    stt = row_data[11]
+    itax = row_data[12]
+    comments = row_data[13]
+
+
+
+
+    defaults=default_parameters()
+
+    if brokerage == "":
+        brokerage = defaults[0]
+    if gst == "":
+        gst = defaults[1]
+    if stt == "":
+        stt = defaults[2]
+    if itax == "":
+        itax = defaults[3]
+
+    print(row_data)
+
+
+    if agency != "" and exchange != "" and equity != "" and Bdate != "" and Bprice != "" and Tdate != "" and Sdate != "" and TPrice != ""  and quantity != "":
+        try:
+            query = "INSERT INTO 'sale' (id,agency,exchange,equity,buy_date,buy_price,trade_date,settle_date,trade_price,quantity,brokerage,gst,stt,itax,remarks)" \
+                    " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+            cur.execute(query, (stock_id, agency, exchange, equity, Bdate,Bprice,Tdate,Sdate,TPrice,quantity,brokerage,gst,stt,itax,comments))
+            con.commit()
+            # msg=QMessageBox.information("Info", "New Stock information has been added")
+            # msg.exec()
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("Sold Stock")
+            msgBox.setText("Sold Stock data has been added. Stock ID: "+str(stock_id))
+            msgBox.setIcon(QMessageBox.Information)
+            msgBox.exec_()
+        except:
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("Warning")
+            msgBox.setText("Sold Stock data has not been added. Stock ID: "+str(stock_id))
+            msgBox.setIcon(QMessageBox.Warning)
+            msgBox.exec_()
+    else:
+        msgBox = QMessageBox()
+        msgBox.setWindowTitle("Missing !!")
+        msgBox.setText("Fields can't be empty!!!")
+        msgBox.setIcon(QMessageBox.Information)
+        msgBox.exec_()
+
+
+
+
+
+def saveStockDB(row_data,stock_id,save_mode):
     con, cur = check_db(db_file)
 
-    save_mode="update"
+    if save_mode=="update":
+        con, cur = check_db(db_file)
+        stock = cur.execute("SELECT * FROM purchase")
+        id_list = []
+        for all_row_data in stock:
+            # print(type(all_row_data[0]))
+            id_list.append(all_row_data[0])
 
-    if stock_id == "":
-       stock_id=gen_id()
-       save_mode = "append"
+        if stock_id in id_list:
+            save_mode = "update"
+        else:
+            save_mode = "append"
 
-    # print(stock_id)
+
+    # print("db append:",row_data)
+
 
     agency= row_data[0]
     exchange = row_data[1]
@@ -187,7 +273,6 @@ def saveStockDB(row_data,stock_id=""):
     comments = row_data[11]
 
     defaults=default_parameters()
-
 
     if brockerage == "":
         brockerage = defaults[0]
@@ -209,14 +294,14 @@ def saveStockDB(row_data,stock_id=""):
                 # msg.exec()
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle("New Stock")
-                msgBox.setText("New Stock data has been added. Stock ID: "+stock_id)
+                msgBox.setText("New Stock data has been added. Stock ID: "+str(stock_id))
                 msgBox.setIcon(QMessageBox.Information)
                 msgBox.exec_()
             except:
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle("Warning")
-                msgBox.setText('Stock information has not been added')
-                msgBox.setIcon(QMessageBox.warning)
+                msgBox.setText("New Stock data has not been added. Stock ID: "+str(stock_id))
+                msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
         else:
             msgBox = QMessageBox()
@@ -227,12 +312,13 @@ def saveStockDB(row_data,stock_id=""):
 
 
     if save_mode=="update":
+        stock_id=str(stock_id)
         msgBox = QMessageBox()
         msgBox.setWindowTitle("Warning")
         msgBox.setText('Are you sure to save changes to stock with reference number'+ stock_id + " ?")
         msgBox.setInformativeText("  Updated informatoin will be "
-                                  "permanatly registered to the "
-                                  "database !")
+                                  "  permanatly registered to the "
+                                  "  database !")
         # msgBox.setWindowIcon(QIcon(""))
         msgBox.setIcon(QMessageBox.Question)
         msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
@@ -251,14 +337,14 @@ def saveStockDB(row_data,stock_id=""):
                 con.commit()
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle("Updated !")
-                msgBox.setText("Stock with reference number " + stock_id + " has been updated")
+                msgBox.setText("Stock with reference number " + str(stock_id) + " has been updated")
                 msgBox.setIcon(QMessageBox.Information)
                 msgBox.exec_()
             except:
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle("Warning")
-                msgBox.setText('Stock with reference number ' + stock_id + ' has not been updated..')
-                msgBox.setIcon(QMessageBox.warning)
+                msgBox.setText('Stock with reference number ' + str(stock_id) + ' has not been updated..')
+                msgBox.setIcon(QMessageBox.Warning)
                 msgBox.exec_()
         else:
             msgBox = QMessageBox()
@@ -347,6 +433,7 @@ class show_stock_info(QDialog):
         self.layouts()
 
     def productDetails(self):
+
         self.xchange=self.stock_info[0]
         self.equity=self.stock_info[1]
         self.Tdate=self.stock_info[2]
@@ -357,7 +444,10 @@ class show_stock_info(QDialog):
         self.brokerage=self.stock_info[7]
         self.gst=self.stock_info[8]
         self.stt=self.stock_info[9]
-        self.itax=self.stock_info[11]
+        self.itax=self.stock_info[10]
+        # print(self.stock_info)
+
+        # exit()
 
     def widgets(self):
         fnt = QFont()
@@ -367,7 +457,7 @@ class show_stock_info(QDialog):
 
         self.stock_idLabel = QLabel()
         self.stock_idLabel.setFont(fnt)
-        self.stock_idLabel.setText(self.stock_id)
+        self.stock_idLabel.setText(str(self.stock_id))
 
 
         self.xchangeLabel=QLabel()
@@ -481,8 +571,13 @@ class add_stocks(QDialog):
         self.titleText=QLabel("Add New stock")
         self.agencyEntry=QLineEdit()
         self.agencyEntry.setPlaceholderText("Enter name of agency (Eg. Kotak, Zerodha, etc)")
-        self.exchangeEntry=QLineEdit()
-        self.exchangeEntry.setPlaceholderText("Enter name of exchange(Eg. BSE,NSE, etc)")
+        # self.exchangeEntry=QLineEdit()
+        # self.exchangeEntry.setPlaceholderText("Enter name of exchange(Eg. BSE,NSE, etc)")
+        self.exchangeEntry = QComboBox()
+        self.exchangeEntry.addItems(["NSE","BSE"])
+        ns1="NSE"
+        indx= self.exchangeEntry.findText(ns1)
+        self.exchangeEntry.setCurrentIndex(indx)
         self.equityEntry=QLineEdit()
         self.equityEntry.setPlaceholderText("Enter Equity name (Eg. SBI, ITC, etc)")
 
@@ -540,10 +635,12 @@ class add_stocks(QDialog):
 
         if self.agency0:
             self.agencyEntry.setText(self.agency0)
+
         # self.exchangeEntry.setText("NSE")
-        # self.equityEntry.setText("SBI")
-        # self.trade_priceEntry.setText("200")
-        # self.quantityEntry.setText("100")
+        self.equityEntry.setText("SBI")
+        self.trade_priceEntry.setText("200")
+        self.quantityEntry.setText("100")
+        self.remarksEntry.setText(" Testing...")
 
     def state_changed(self):
         self.save_db = True
@@ -551,7 +648,7 @@ class add_stocks(QDialog):
     def accept(self):
         # self.output="hi"
         agency=self.agencyEntry.text()
-        xchange=self.exchangeEntry.text()
+        xchange=self.exchangeEntry.currentText()
         equity=self.equityEntry.text()
         tdate=self.trade_dateEntry.text()
         sdate=self.settle_dateEntry.text()
@@ -628,74 +725,6 @@ class add_stocks(QDialog):
         self.setLayout(self.mainLayout)
 
 
-    # def add_stock(self):
-    #     #print("Hi")
-    #     cur = self.cur
-    #     con = self.con
-    #
-    #     agency=self.agencyEntry.text()
-    #     exchange=self.exchangeEntry.text()
-    #     equity=self.equityEntry.text()
-    #     tradeDate=self.trade_dateEntry.text()
-    #     settleDate=self.settle_dateEntry.text()
-    #     tradPrice=self.trade_priceEntry.text()
-    #     quantity=self.quantityEntry.text()
-    #     unitBrock=self.unit_brockEntry.text()
-    #     gst_Brock=self.gst_brockEntry.text()
-    #     stt=self.stt_Entry.text()
-    #     itax=self.it_Entry.text()
-    #     comments=""
-    #
-    #     if self.remarksEntry.text() != "":
-    #         comments=self.remarksEntry.text()
-    #
-    #     stock = cur.execute("SELECT * FROM purchase")
-    #     id_list = []
-    #     for all_row_data in stock:
-    #         id_list.append(all_row_data[0])
-    #
-    #     # print(id_list)
-    #     stock_id = f'{random.randrange(1000, 10 ** 6)}'
-    #     m=len(id_list)-1
-    #     # stock_id=6463
-    #     # print("#",m,range(m))
-    #     for i in range(m):
-    #         # print("##"+str(i),stock_id)
-    #         if stock_id in id_list:
-    #             stock_id = f'{random.randrange(1000, 10 ** 6)}'
-    #             # print("->"+str(stock_id))
-    #         else:
-    #             break
-    #
-    #     #print(f'{random.randrange(1000, 10 ** 6):07}')
-    #     # print("#",stock_id)
-    #
-    #     if unitBrock != "":
-    #         unitBrock=self.brockerage
-    #     if gst_Brock !="":
-    #         gst_Brock=self.gst
-    #     if stt !="":
-    #         stt=self.stt
-    #     if itax !="":
-    #         itax=self.itax
-    #
-    #
-    #     if agency!=""  and exchange!=""  and equity!=""  and tradeDate!=""  and settleDate!=""  and tradPrice!=""  and quantity!="" :
-    #         try:
-    #             query="INSERT INTO 'purchase' (id,agency,exchange,equity,trade_date,settle_date,trade_price,quantity,unit_brockerage,gst_brockerage,stt,income_tax,remarks)" \
-    #                   " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)"
-    #             cur.execute(query,(stock_id,agency,exchange,equity,tradeDate,settleDate,tradPrice,quantity,unitBrock,gst_Brock,stt,itax,comments))
-    #             con.commit()
-    #             QMessageBox.information(self,"Info","New Stock information has been added")
-    #         except:
-    #             QMessageBox.information(self, "Info", "New Stock information has not been added")
-    #     else:
-    #         QMessageBox.information(self, "Info", "Fields cant be empty!!!")
-    #
-
-
-
-
 class update_stocks(QDialog):
 
     # def __init__(self,con,cur,agency=""):
@@ -726,13 +755,13 @@ class update_stocks(QDialog):
         self.equity=self.stock_data[2]
         self.trade_date=self.stock_data[3]
         self.settle_date=self.stock_data[4]
-        self.price=self.stock_data[5]
-        self.quantity=self.stock_data[6]
-        self.brockerage=self.stock_data[8]
-        self.gst=self.stock_data[9]
-        self.stt=self.stock_data[10]
-        self.itax=self.stock_data[12]
-        self.comment=self.stock_data[16]
+        self.price=str(self.stock_data[5])
+        self.quantity=str(self.stock_data[6])
+        self.brockerage=str(self.stock_data[7])
+        self.gst=str(self.stock_data[8])
+        self.stt=str(self.stock_data[9])
+        self.itax=str(self.stock_data[10])
+        self.comment=self.stock_data[11]
 
 
     def default_paramters(self):
@@ -751,8 +780,15 @@ class update_stocks(QDialog):
         self.agencyEntry.setText(self.agency)
         # self.agencyEntry.setReadOnly(1)
         self.agencyEntry.setDisabled(True)
-        self.exchangeEntry=QLineEdit()
-        self.exchangeEntry.setText(self.xchange)
+        # self.exchangeEntry=QLineEdit()
+        # self.exchangeEntry.setText(self.xchange)
+
+        self.exchangeEntry = QComboBox()
+        self.exchangeEntry.addItems(["NSE", "BSE"])
+        ns1 = self.xchange
+        indx = self.exchangeEntry.findText(ns1)
+        self.exchangeEntry.setCurrentIndex(indx)
+
         self.equityEntry=QLineEdit()
         self.equityEntry.setText(self.equity)
         self.trade_dateEntry = QDateEdit(self)
@@ -788,7 +824,7 @@ class update_stocks(QDialog):
         self.remarksEntry.setText(self.comment)
 
         self.agencyEntry.setPlaceholderText("Enter name of agency (Eg. Kotak, Zerodha, etc)")
-        self.exchangeEntry.setPlaceholderText("Enter name of exchange(Eg. BSE,NSE, etc)")
+        # self.exchangeEntry.setPlaceholderText("Enter name of exchange(Eg. BSE,NSE, etc)")
         self.equityEntry.setPlaceholderText("Enter Equity name (Eg. SBI, ITC, etc)")
         # self.trade_dateEntry.setDate(QDate.currentDate())
         self.trade_dateEntry.setDisplayFormat("dd/MM/yyyy")
@@ -833,7 +869,8 @@ class update_stocks(QDialog):
     def accept(self):
         # self.output="hi"
         agency = self.agencyEntry.text()
-        xchange = self.exchangeEntry.text()
+        # xchange = self.exchangeEntry.text()
+        xchange = self.exchangeEntry.currentText()
         equity = self.equityEntry.text()
         tdate = self.trade_dateEntry.text()
         sdate = self.settle_dateEntry.text()
@@ -847,23 +884,11 @@ class update_stocks(QDialog):
         self.output = agency, xchange, equity, tdate, sdate, price, quantity, unit_brock, gst, stt, itax, comment,self.save_db
         super(update_stocks,self).accept()
 
-    # def reject(self):
-    #     print("rejected")
-
-    # def done(self, result):
-    #     # https: // www.programcreek.com / python / example / 98550 / PyQt5.QtWidgets.QDialogButtonBox.Ok
-    #     if result == QDialog.Accepted:
-    #         if len(self.fileinput.text()) == 0:
-    #             QMessageBox.question(self, 'Error', "Please provide an output file.", QMessageBox.Ok)
-    #
-    #             return
-    #
-    #     super().done(result)
 
     def clearAll(self):
 
         # self.agencyEntry.setText("")
-        self.exchangeEntry.setText("")
+        # self.exchangeEntry.setText("")
         self.equityEntry.setText("")
         self.trade_dateEntry.setDate(QDate.currentDate())
         self.trade_dateEntry.setDisplayFormat("dd/MM/yyyy")
@@ -928,71 +953,192 @@ class update_stocks(QDialog):
         self.setLayout(self.mainLayout)
 
 
-    def add_stock(self):
-        #print("Hi")
-        cur = self.cur
-        con = self.con
+class sold_stocks(QDialog):
 
-        agency=self.agencyEntry.text()
-        exchange=self.exchangeEntry.text()
-        equity=self.equityEntry.text()
-        tradeDate=self.trade_dateEntry.text()
-        settleDate=self.settle_dateEntry.text()
-        tradPrice=self.trade_priceEntry.text()
-        quantity=self.quantityEntry.text()
-        unitBrock=self.unit_brockEntry.text()
-        gst_Brock=self.gst_brockEntry.text()
-        stt=self.stt_Entry.text()
-        itax=self.it_Entry.text()
-        comments=""
+    # def __init__(self,con,cur,agency=""):
+    def __init__(self,stock_data,parent=None):
+        super(sold_stocks,self).__init__(parent)
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowTitle("Sold stock")
+        self.stock_data=stock_data
 
-        if self.remarksEntry.text() != "":
-            comments=self.remarksEntry.text()
+        # self.setWindowIcon(QIcon('icons/icon.ico'))
+        self.setGeometry(450,150,450,450)
+        self.setFixedSize(self.size())
 
-        stock = cur.execute("SELECT * FROM purchase")
-        id_list = []
-        for all_row_data in stock:
-            id_list.append(all_row_data[0])
+        self.UI()
+        self.show()
 
-        # print(id_list)
-        stock_id = f'{random.randrange(1000, 10 ** 6)}'
-        m=len(id_list)-1
-        # stock_id=6463
-        # print("#",m,range(m))
-        for i in range(m):
-            # print("##"+str(i),stock_id)
-            if stock_id in id_list:
-                stock_id = f'{random.randrange(1000, 10 ** 6)}'
-                # print("->"+str(stock_id))
-            else:
-                break
+    def UI(self):
+        self.fetch_data()
+        # self.default_paramters()
+        self.widgets()
+        self.layouts()
 
-        #print(f'{random.randrange(1000, 10 ** 6):07}')
-        # print("#",stock_id)
-
-        if unitBrock != "":
-            unitBrock=self.brockerage
-        if gst_Brock !="":
-            gst_Brock=self.gst
-        if stt !="":
-            stt=self.stt
-        if itax !="":
-            itax=self.itax
+    def fetch_data(self):
+        # print( type(self.stock_data))
+        self.agency=self.stock_data[0]
+        self.xchange=self.stock_data[1]
+        self.equity=self.stock_data[2]
+        self.trade_date=self.stock_data[3]
+        self.settle_date=self.stock_data[4]
+        self.price=str(self.stock_data[5])
+        self.quantity=str(self.stock_data[6])
+        self.brockerage=str(self.stock_data[7])
+        self.gst=str(self.stock_data[8])
+        self.stt=str(self.stock_data[9])
+        self.itax=str(self.stock_data[10])
+        # self.comment=self.stock_data[11]
 
 
-        if agency!=""  and exchange!=""  and equity!=""  and tradeDate!=""  and settleDate!=""  and tradPrice!=""  and quantity!="" :
-            try:
-                query="INSERT INTO 'purchase' (id,agency,exchange,equity,trade_date,settle_date,trade_price,quantity,unit_brockerage,gst_brockerage,stt,income_tax,remarks)" \
-                      " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)"
-                cur.execute(query,(stock_id,agency,exchange,equity,tradeDate,settleDate,tradPrice,quantity,unitBrock,gst_Brock,stt,itax,comments))
-                con.commit()
-                QMessageBox.information(self,"Info","New Stock information has been added")
-            except:
-                QMessageBox.information(self, "Info", "New Stock information has not been added")
-        else:
-            QMessageBox.information(self, "Info", "Fields cant be empty!!!")
+    def default_paramters(self):
+        cur=self.cur
+        cur.execute('SELECT * FROM defaults')
+        default = cur.fetchall()
+        self.brockerage = default[0][0]
+        self.gst = default[0][1]
+        self.stt = default[0][2]
+        self.itax = default[0][3]
+
+    def widgets(self):
+        self.save_db = False
+        self.titleText=QLabel("Sell stock")
+        self.agencyEntry=QLineEdit()
+        self.agencyEntry.setText(self.agency)
+        # self.agencyEntry.setReadOnly(1)
+        self.agencyEntry.setDisabled(True)
+        # self.exchangeEntry=QLineEdit()
+        # self.exchangeEntry.setText(self.xchange)
+
+        self.exchangeEntry = QComboBox()
+        self.exchangeEntry.addItems(["NSE", "BSE"])
+        ns1 = self.xchange
+        indx = self.exchangeEntry.findText(ns1)
+        self.exchangeEntry.setCurrentIndex(indx)
+        self.exchangeEntry.setDisabled(True)
+
+        self.equityEntry=QLineEdit()
+        self.equityEntry.setText(self.equity)
+        self.equityEntry.setDisabled(True)
+
+        self.buy_dateEntry = QDateEdit(self)
+        #self.dateEdit.setDateTime(QDateTime(QDate(2019, 2, 23),QTime(0, 0, 0)))        #
+        self.buy_dateEntry.setDate(QDate.fromString(self.trade_date,"dd/MM/yyyy"))
+        self.buy_dateEntry.setDisplayFormat("dd/MM/yyyy")
+        self.buy_dateEntry.setDisabled(True)
+
+        self.buy_priceEntry = QLineEdit()
+        self.buy_priceEntry.setText(self.price)
+        self.buy_priceEntry.setDisabled(True)
+
+        self.trade_dateEntry = QDateEdit(self)
+        # self.dateEdit.setDateTime(QDateTime(QDate(2019, 2, 23),QTime(0, 0, 0)))        #
+        self.trade_dateEntry.setDate(QDate.currentDate())
+        # self.trade_dateEntry.setDate(QDate.fromString(self.trade_date, "dd/MM/yyyy"))
+        self.trade_dateEntry.setDisplayFormat("dd/MM/yyyy")
+
+        self.settle_dateEntry = QDateEdit(self)
+        self.settle_dateEntry.setDate(QDate.currentDate())
+        # self.settle_dateEntry.setDate(QDate.fromString(self.settle_date,"dd/MM/yyyy"))
+        self.settle_dateEntry.setDisplayFormat("dd/MM/yyyy")
+        # self.trade_dateEntry = QLineEdit()
+        # self.trade_dateEntry.setPlaceholderText("Enter trade date(DD/MM/YEAR)")
+        # self.settle_dateEntry=QLineEdit()
+        # self.settle_dateEntry.setPlaceholderText("Enter settlement date(DD/MM/YEAR)")
+        self.trade_priceEntry = QLineEdit()
+        self.trade_priceEntry.setPlaceholderText("Enter traded price when sold")
+
+        self.quantityEntry = QLineEdit()
+        self.quantityEntry.setPlaceholderText("Enter number of stocks sold")
+
+        self.unit_brockEntry = QLineEdit()
+        # self.unit_brockEntry.setPlaceholderText("Enter brockerage(%) per unit")
+        self.unit_brockEntry.setText(str(self.brockerage))
+        self.gst_brockEntry = QLineEdit()
+        # self.gst_brockEntry.setPlaceholderText("Enter gst(%) on brockerage")
+        self.gst_brockEntry.setText(str(self.gst))
+        self.stt_Entry = QLineEdit()
+        # self.stt_Entry.setPlaceholderText("Enter stt(%) of share value")
+        self.stt_Entry.setText(str(self.stt))
+        self.it_Entry = QLineEdit()
+        # self.it_Entry.setPlaceholderText("Enter Income tax slab(%)")
+        self.it_Entry.setText(str(self.itax))
+
+        self.remarksEntry = QLineEdit()
+        self.remarksEntry.setPlaceholderText("Type your remarks ..")
+
+        # https: // www.programcreek.com / python / example / 108071 / PyQt5.QtWidgets.QDialogButtonBox
+
+        # self.buttonBox=QDialogButtonBox(QDialogButtonBox.Ok |QDialogButtonBox.Reset |QDialogButtonBox.Cancel)
+        self.buttonBox=QDialogButtonBox(QDialogButtonBox.Ok |QDialogButtonBox.Cancel)
+        # self.resets=QPushButton("Reset")
+        # self.resets.clicked.connect(self.clearAll)
+        # self.buttonBox.addButton(self.resets,QDialogButtonBox.ResetRole)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+        # self.buttonBox.clear.connect(self.clearAll)
+        self.spaceItem = QSpacerItem(150, 10, QSizePolicy.Expanding,QSizePolicy.Minimum )
+
+        self.saveDB=QCheckBox("Update to Database:")
+        self.saveDB.stateChanged.connect(self.state_changed)
+
+    def state_changed(self):
+        self.save_db=True
+
+    def accept(self):
+        agency = self.agencyEntry.text()
+        xchange = self.exchangeEntry.currentText()
+        equity = self.equityEntry.text()
+        buy_date = self.buy_dateEntry.text()
+        buy_price = self.buy_priceEntry.text()
+        tdate = self.trade_dateEntry.text()
+        sdate = self.settle_dateEntry.text()
+        price = self.trade_priceEntry.text()
+        quantity = self.quantityEntry.text()
+        unit_brock = self.unit_brockEntry.text()
+        gst = self.gst_brockEntry.text()
+        stt = self.stt_Entry.text()
+        itax = self.it_Entry.text()
+        comment = self.remarksEntry.text()
+        self.output = agency, xchange, equity, buy_date,buy_price,tdate, sdate, price, quantity, unit_brock, gst, stt, itax, comment,self.save_db
+        super(sold_stocks,self).accept()
 
 
+    def get_inp(self):
+        return self.output
+
+    def layouts(self):
+        self.mainLayout=QVBoxLayout()
+        self.mainTopLayout=QVBoxLayout()
+        self.topLayout=QFormLayout()
+        self.bottomLayout=QHBoxLayout()
+        self.topFrame=QFrame()
+
+        self.topGroupBox=QGroupBox("Stock Information")
+        self.bottomGroupBox=QGroupBox("Control")
+        self.topLayout.addRow(QLabel("Agency: "),self.agencyEntry)
+        self.topLayout.addRow(QLabel("Exchange: "),self.exchangeEntry)
+        self.topLayout.addRow(QLabel("Equity: "),self.equityEntry)
+        self.topLayout.addRow(QLabel("Buy Date: "),self.buy_dateEntry)
+        self.topLayout.addRow(QLabel("Overall buy Price: "), self.buy_priceEntry)
+        self.topLayout.addRow(QLabel("Trade Date: "),self.trade_dateEntry)
+        self.topLayout.addRow(QLabel("Settlement Date: "),self.settle_dateEntry)
+        self.topLayout.addRow(QLabel("Trade Price: "),self.trade_priceEntry)
+        self.topLayout.addRow(QLabel("Quantity: "),self.quantityEntry)
+        self.topLayout.addRow(QLabel("Brockerage per unit: "),self.unit_brockEntry)
+        self.topLayout.addRow(QLabel("GST on Brockerage: "),self.gst_brockEntry)
+        self.topLayout.addRow(QLabel("STT on Share: "),self.stt_Entry)
+        self.topLayout.addRow(QLabel("Income Tax: "),self.it_Entry)
+        self.topLayout.addRow(QLabel("Remarks: "),self.remarksEntry)
+
+        self.bottomLayout.addWidget(self.buttonBox)
+        self.topGroupBox.setLayout(self.topLayout)
+        self.bottomGroupBox.setLayout(self.bottomLayout)
+        self.mainTopLayout.addWidget(self.topGroupBox)
+        self.mainTopLayout.addWidget(self.saveDB)
+        self.mainTopLayout.addWidget(self.bottomGroupBox)
+        self.mainLayout.addLayout(self.mainTopLayout)
+        self.setLayout(self.mainLayout)
 
 
 

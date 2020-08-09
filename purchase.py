@@ -4,7 +4,8 @@ from PyQt5.QtCore import Qt,QPoint,pyqtSlot,QDateTime,QVariant
 
 import ast
 from collections import defaultdict
-from db_management import read_db,check_db,add_stocks,update_stocks,saveStockDB,delStockDB,show_stock_info
+from db_management import read_db,check_db,add_stocks,update_stocks,saveStockDB,delStockDB,\
+    show_stock_info,gen_id,sold_stocks,saveStockSaleDB
 from get_nse_data import download_data_for_month
 
 
@@ -137,7 +138,7 @@ def parse_str(s):
    try:
       return ast.literal_eval(str(s))
    except:
-      return
+      return str(s)
 
 
 class purchase_list(QWidget):
@@ -152,12 +153,48 @@ class purchase_list(QWidget):
         self.UI()
         self.show()
 
-
     def UI(self):
-       self.widgets()
-       # self.load_from_db()
-       self.layouts()
+        self.table_header_info()
+        self.widgets()
+        # self.load_from_db()
+        self.layouts()
 
+    def table_header_info(self):
+        self.headerName = []
+        self.headerName.append("Reference \n Number")  # 0
+        self.headerName.append("Exchange")  # 1
+        self.headerName.append("Equity")  # 2
+        self.headerName.append("Trade Date")  # 3
+        self.headerName.append("Settlement \n Date")  # 4
+        self.headerName.append("Trade \n Price")  # 5
+        self.headerName.append("Quantity")  # 6
+        self.headerName.append("Contract \n Amount")  # 7
+        self.headerName.append("Brokerage \n (% per unit)")  # 8
+        self.headerName.append("GST(%) on \n Brokerage)")  # 9
+        self.headerName.append("STT(%))")  # 10
+        self.headerName.append("GST+STT+ \n Brokerage")  # 11
+        self.headerName.append("Income \n tax(%)")  # 12
+        self.headerName.append("Net \n Amount")  # 13
+        self.headerName.append("Overall \n unit Price")  # 14
+        self.headerName.append("Zero Profit \n unit Price")  # 15
+        self.headerName.append("Current\n unit Price")  # 16
+        self.headerName.append("Gain \n per unit")  # 17
+        self.headerName.append("Overall \n Gain")  # 18
+        self.headerName.append("Remarks")  # 19
+        self.col_N = 20
+        self.index_disp = []
+        self.index_disp = [0, 1, 2, 3, 5, 6, 11, 13, 14, 15, 16, 17, 18, 19]
+        self.col_disp = len(self.index_disp)
+        self.db_index=[]
+        self.db_index=['id','agency','exchange','equity','trade_date','settle_date','trade_price','quantity','unit_brokerage','gst','stt','itax','remarks']
+
+        self.stock_key=[]
+        self.stockInfo_key=['exchange', 'equity', 'Tdate', 'Sdate', 'Tprice', 'quantity', 'ContAmount', 'unit_brokerage', 'gst', 'stt', 'gst_stt_br', 'itax',
+                            'NetAmount', 'Oprice', 'Zprice', 'remarks', 'invoice' ]
+
+        self.stock_disp_key=[]
+        self.stock_disp_key = ['invoice','exchange', 'equity', 'Tdate', 'Tprice', 'quantity','gst_stt_br', 'NetAmount', 'Oprice', 'Zprice', 'current_price',
+                               'unit_gain', 'total_gain','remarks']
 
     def widgets(self):
 
@@ -203,10 +240,20 @@ class purchase_list(QWidget):
         self.calculate.setToolTip("Recalculate to \n updated values")
 
         self.List_of_agency = QListWidget()
+
         agency,self.stockDB =read_db()
+
         self.List_of_agency=self.load_agency(agency)
 
-        self.stockInfo=self.store_stocks()
+        self.stocksInfoz=self.store_stocks()
+        # for k1,v1 in self.stocksInfoz.items():
+        #     print(k1)
+        #     for k2,v2 in v1.items():
+        #         print(k2,v2)
+
+        # exit()
+
+
         self.stockList = self.tabulateStocks()
         self.stockList.setSortingEnabled(True)
 
@@ -222,10 +269,12 @@ class purchase_list(QWidget):
         # abc=self.List_of_agency.currentItem()
         item = self.List_of_agency.item(0)
         self.List_of_agency.setCurrentItem(item)
+
+        # print("1",self.stocksInfoz)
         self.get_stocks(item)
 
     def get_nse_data(self):
-        delta=0
+        delta=1
         n_rows = self.stockList.rowCount()
         j=2
         jj=8
@@ -245,7 +294,6 @@ class purchase_list(QWidget):
             # print(symbol)
             try:
                 current=download_data_for_month(symbol,delta)
-
                 price=current
                 input_data = price, Numb, brock, gst, stt, itax
                 output_data = self.stock_sale_calc(input_data)
@@ -273,8 +321,6 @@ class purchase_list(QWidget):
         table_sort_color(self.stockList)
 
         self.agencyGain.setText(str(total_gain))
-
-
 
 
     def layouts(self):
@@ -360,19 +406,6 @@ class purchase_list(QWidget):
         self.mainLayout.addWidget(self.horizontalSplitter)
         self.setLayout(self.mainLayout)
 
-
-
-
-    #
-    # @pyqtSlot()
-    # def get_agencyName(self):
-    #     item=self.List_of_agency.currentItem()
-    #     self.agencyName.setText(item.text())
-
-        # print(self.agencyName.text())
-        # return self.agencyName
-
-
     def load_agency(self,agency):
         # List of stock brocker agencies
         List_of_agency = QListWidget()
@@ -387,79 +420,61 @@ class purchase_list(QWidget):
         # https://www.tutorialexample.com/pyqt-table-add-row-data-dynamically-a-beginner-guide-pyqt-tutorial/
 
         agncy = item.text()
+        # print(type(agncy))
         self.stockList.setRowCount(0)
-
-        # item = self.List_of_agency.currentItem()
         self.agencyName.setText(agncy)
-        # self.summaryGroupBox.setTitle(agncy)
-        # print(self.agencyName.text())
 
-        stocks=get_nested_dist_value(self.stockInfo,agncy)
+        stockz=get_nested_dist_value(self.stocksInfoz,agncy)
+        one_stock = make_nested_dict0()
+        one_stock.clear()
 
-        # print(agncy,stocks)
-
-        for key, val in stocks.items():
+        for key, val in stockz.items():
             row_number = self.stockList.rowCount()
             self.stockList.setRowCount(row_number + 1)
-            rowList = list(val)
-            rowList.insert(0,key)
-            new_table=[]
-            new_table=rowList[0:4]
-            new_table.insert(5,rowList[5])
-            new_table.insert(6,rowList[6])
-            new_table.insert(7,rowList[11])
-            new_table.insert(8,rowList[13])
-            new_table.insert(9,rowList[14])
-            new_table.insert(10,rowList[15])
-            new_table.insert(11,0)
-            new_table.insert(12,0)
-            new_table.insert(13,0)
-            new_table.insert(14,rowList[-1])
+            one_stock=val
+            # print(key,one_stock)
+            one_stock['invoice'] = key
+            one_stock['current_price'] = 0.0
+            one_stock['unit_gain'] = 0.0
+            one_stock['total_gain'] = 0.0
 
-            # print(new_table)
-            # exit()
-            # row_data = tuple(rowList)
-            row_data = tuple(new_table)
-            # print(row_data)
+            new_table = []
+            new_table.clear()
+            for info in self.stock_disp_key:
+                data = one_stock[info]
+                new_table.append(data)
 
-
-            for column_number, data in enumerate(row_data):
-                self.stockList.setSortingEnabled(False)
-                self.stockList.setItem(row_number, column_number, QTableWidgetItem(str(data)))
-
-
-
-        # print(type(self.stockList))
-        # exit()
+            new_table = tuple(new_table)
+            self.add_update_disp(row_number,new_table,agncy,False)
 
         self.stockList.setSortingEnabled(True)
         table_sort_color(self.stockList)
 
-        output=self.calculate_sum(agncy)
+        self.calculate_sum()
 
-        self.agencyInvestmt.setText(str(output[0]))
-        self.agencyCharges.setText(str(output[1]))
-        # self.agencyGain.setText(str(output[2]))
-        # print(self.agencyCharges.text(), self.agencyInvestmt.text())
+        return
 
+    def add_update_disp(self,row,row_data,agency,do_sum):
 
-    # def stock_table_to_info(self,agency):
-    #
-    #     for key, val in stocks.items():
-    #         row_number = self.stockList.rowCount()
-    #         self.stockList.setRowCount(row_number + 1)
-    #         rowList = list(val)
-    #         rowList.insert(0, key)
-    #         row_data = tuple(rowList)
-    #
-    #         for column_number, data in enumerate(row_data):
-    #             self.stockList.setSortingEnabled(False)
-    #             self.stockList.setItem(row_number, column_number, QTableWidgetItem(str(data)))
+        for column_number, data in enumerate(row_data):
+            # print(data,type(parse_str(data)))
+            newItem = QTableWidgetItem()
+            data=parse_str(data)
+            newItem.setData(Qt.DisplayRole,data)
+            self.stockList.setSortingEnabled(False)
+            self.stockList.setItem(row, column_number,newItem)
+            # print(data,type(data))
+        # exit()
+        self.stockList.setSortingEnabled(True)
 
+        if do_sum:
+           self.calculate_sum(agency)
 
     def store_stocks(self):
-        # stocksInfo = make_nested_dict1()
-        stocksInfo=make_nested_dict0()
+
+        stocksInfoz=make_nested_dict0()
+        stocksInfoz.clear()
+
         for key, value in self.stockDB.items():
             for k1, val1 in value.items():
                 rowList = list(val1)
@@ -480,11 +495,25 @@ class purchase_list(QWidget):
                 rowList.insert(13, output_data[3])
                 rowList.insert(14, output_data[4])
                 row_data = tuple(rowList)
-                stocksInfo[key][k1] = row_data
 
-        return stocksInfo
-
-
+                stocksInfoz[key][k1]['exchange']=rowList[0]
+                stocksInfoz[key][k1]['equity']=rowList[1]
+                stocksInfoz[key][k1]['Tdate']=rowList[2]
+                stocksInfoz[key][k1]['Sdate']=rowList[3]
+                stocksInfoz[key][k1]['Tprice']=rowList[4]
+                stocksInfoz[key][k1]['quantity']=rowList[5]
+                stocksInfoz[key][k1]['ContAmount']=rowList[6]
+                stocksInfoz[key][k1]['unit_brokerage']=rowList[7]
+                stocksInfoz[key][k1]['gst']=rowList[8]
+                stocksInfoz[key][k1]['stt']=rowList[9]
+                stocksInfoz[key][k1]['gst_stt_br']=rowList[10]
+                stocksInfoz[key][k1]['itax']=rowList[11]
+                stocksInfoz[key][k1]['NetAmount']=rowList[12]
+                stocksInfoz[key][k1]['Oprice']=rowList[13]
+                stocksInfoz[key][k1]['Zprice']=rowList[14]
+                stocksInfoz[key][k1]['remarks']=rowList[15]
+                
+        return stocksInfoz
 
 
     def stock_purchase_calc(self, input_data):
@@ -534,58 +563,40 @@ class purchase_list(QWidget):
         stt_net_total = stt * net_total
         contr_amount = price * Quant
         net_amount = net_total - gst_brockerage - stt_net_total
-        gst_stt_brk = net_amount - contr_amount
+        gst_stt_brk = taxable_brockerage+gst_brockerage+stt_net_total
         actual_price = net_amount / Quant
 
         contr_amount = round(contr_amount, 3)
         net_amount = round(net_amount, 3)
         gst_stt_brk = round(gst_stt_brk, 3)
         actual_price = round(actual_price, 3)
-        Zero_profit = round((actual_price + gst_stt_brk / Quant) * 1.0001, 3)
+        Zero_profit = round((actual_price + gst_stt_brk /float(Quant)), 3)
 
         return contr_amount, net_amount, gst_stt_brk, actual_price, Zero_profit
 
-    def tabulateStocks(self):
-        stockTable = QTableWidget()
-        stockTable.setColumnCount(14)
-        stockTable.setHorizontalHeaderItem(0, QTableWidgetItem("Reference \n Number"))
-        stockTable.setHorizontalHeaderItem(1, QTableWidgetItem("Exchange"))
-        stockTable.setHorizontalHeaderItem(2, QTableWidgetItem("Equity"))
-        stockTable.setHorizontalHeaderItem(3, QTableWidgetItem("Trade Date"))
-        # stockTable.setHorizontalHeaderItem(4, QTableWidgetItem("Settlement \n Date"))
-        stockTable.setHorizontalHeaderItem(4, QTableWidgetItem("Trade \n Price"))
-        stockTable.setHorizontalHeaderItem(5, QTableWidgetItem("Quantity"))
-        # stockTable.setHorizontalHeaderItem(7, QTableWidgetItem("Contract \n Amount"))
-        # stockTable.setHorizontalHeaderItem(8, QTableWidgetItem("Brokerage \n (% per unit)"))
-        # stockTable.setHorizontalHeaderItem(9, QTableWidgetItem("GST(%) on \n Brokerage"))
-        # stockTable.setHorizontalHeaderItem(10, QTableWidgetItem("STT(%)"))
-        stockTable.setHorizontalHeaderItem(6, QTableWidgetItem("GST+STT+ \n Brokerage"))
-        # stockTable.setHorizontalHeaderItem(12, QTableWidgetItem("Income \n tax(%)"))
-        stockTable.setHorizontalHeaderItem(7, QTableWidgetItem("Net \n Amount"))
-        stockTable.setHorizontalHeaderItem(8, QTableWidgetItem("Overall \n unit Price"))
-        stockTable.setHorizontalHeaderItem(9, QTableWidgetItem("Zero Profit \n unit Price"))
-        stockTable.setHorizontalHeaderItem(10, QTableWidgetItem("Current\n unit Price"))
-        stockTable.setHorizontalHeaderItem(11, QTableWidgetItem("Gain \n per unit "))
-        stockTable.setHorizontalHeaderItem(12, QTableWidgetItem("Overall \n Gain "))
-        stockTable.setHorizontalHeaderItem(13, QTableWidgetItem("Remarks"))
-        stockTable.setAlternatingRowColors(True)
 
+
+    def tabulateStocks(self):
+
+        stockTable = QTableWidget()
+        stockTable.setColumnCount(self.col_disp)
+        j=0
+        for i in self.index_disp:
+            hname=str(self.headerName[i])
+            stockTable.setHorizontalHeaderItem(j, QTableWidgetItem(hname))
+            j=j+1
+
+        stockTable.setAlternatingRowColors(True)
         header = stockTable.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeToContents)
         header.setSelectionMode(QAbstractItemView.SingleSelection)
         header.setStretchLastSection(True)
-
         stockTable.setFont(QFont("Times", 9))
         stockTable.setSortingEnabled(False)
-
-        # header.setStyleSheet( "QHeaderView::section { border-bottom: 5px solid black; }" )
-        # header.setFrameStyle(QFrame.Box | QFrame.Plain)
-        # header.setLineWidth(1)
         header.setFont(QFont("Times", 12))
         stockTable.setSelectionBehavior(QAbstractItemView.SelectRows)
         stockTable.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         # stockTable.horizontalHeader().setSectionResizeMode(0,QHeaderView.Stretch)
-
 
         return stockTable
 
@@ -612,6 +623,7 @@ class purchase_list(QWidget):
         updateAct = QAction(QIcon(""), 'Update', self, triggered=self.update_Stock)
         # refreshAct = QAction(QIcon(""), 'Refresh', self, triggered=self.refresh_Stock)
         dispAct = QAction(QIcon(""), 'Show', self, triggered=self.show_Stock)
+        soldAct = QAction(QIcon(""), 'Sold', self, triggered=self.stock_sold)
         addAct = self.menu.addAction(addAct)
         editStk = self.menu.addAction(updateAct)
         dispStk = self.menu.addAction(dispAct)
@@ -619,7 +631,8 @@ class purchase_list(QWidget):
         remStk = self.menu.addAction(remAct)
         dbremStk = self.menu.addAction(dbremAct)
         # refrStk = self.menu.addAction(refreshAct)
-
+        self.menu.addSeparator()
+        soldStk = self.menu.addAction(soldAct)
 
         self.menu.exec_(self.sender().viewport().mapToGlobal(pos))
 
@@ -629,10 +642,23 @@ class purchase_list(QWidget):
         if self.stockList.selectedItems():
             agency = self.List_of_agency.currentItem().text()
             row_number = self.stockList.currentRow()
-            invoice = self.stockList.item(row_number, 0).text()
-            # print(invoice)
-            stock_data =list(self.get_stock_info(agency,invoice))
-            # print(stock_data)
+            invoice = int(self.stockList.item(row_number, 0).text())
+            one_stock =self.get_stock_info(agency,invoice)
+
+            stock_data = []
+            stock_data.clear()
+            stock_data.append(one_stock["exchange"])
+            stock_data.append(one_stock["equity"])
+            stock_data.append(one_stock["Tdate"])
+            stock_data.append(one_stock["Sdate"])
+            stock_data.append(one_stock["Tprice"])
+            stock_data.append(one_stock["quantity"])
+            stock_data.append(one_stock["ContAmount"])
+            stock_data.append(one_stock["unit_brokerage"])
+            stock_data.append(one_stock["gst"])
+            stock_data.append(one_stock["stt"])
+            stock_data.append(one_stock["itax"])
+            # stock_data.append(one_stock["remarks"])
 
             if invoice:
                 showInfo = show_stock_info(invoice,stock_data)
@@ -642,30 +668,15 @@ class purchase_list(QWidget):
 
     def get_stock_info(self,agency,invoice):
 
-
-        if invoice:
-            invoice=parse_str(invoice)
-            # agency=parse_str(agency)
-            agencyStock = get_nested_dist_value(self.stockInfo,agency)
+        if invoice != "":
+            invoice=int(invoice)
+            agency=str(agency)
+            agencyStock = get_nested_dist_value(self.stocksInfoz,agency)
             searchCase = get_nested_dist_value(agencyStock,invoice)
-            #
-            # print(type(invoice), type(stocks))
-            # print(agencyStock)
-            # print(searchCase)
-            # exit()
-            # for key, val in stocks.items():
-            #     rowList = list(val)
-            #     rowList.insert(0, key)
-            #     row_data = tuple(rowList)
 
-                #
-                # for column_number, data in enumerate(row_data):
-                #     self.stockList.setSortingEnabled(False)
-                #     self.stockList.setItem(row_number, column_number, QTableWidgetItem(str(data)))
-            # print(row_data)
+            # print("--", searchCase)
+
             return searchCase
-
-
 
 
     def del_shareDB(self):
@@ -683,7 +694,7 @@ class purchase_list(QWidget):
                     invoice = self.stockList.item(row_number, 0).text()
                     agency = str(agency)
                     invoice = parse_str(invoice)
-                    del (self.stockInfo[agency][invoice])
+                    del (self.stocksInfoz[agency][invoice])
                     self.stockList.removeRow(row_number)
                     QMessageBox.information(self, "Info", "Stock with reference number " + str(invoice) + " has been deleted from table")
                 except:
@@ -697,214 +708,360 @@ class purchase_list(QWidget):
         agency = self.List_of_agency.currentItem().text()
         if self.stockList.selectedItems():
             row_number = self.stockList.currentRow()
-            invoice = self.stockList.item(row_number, 0).text()
-            agency = str(agency)
-            invoice = parse_str(invoice)
-            del (self.stockInfo[agency][invoice])
+            invoice = int(self.stockList.item(row_number, 0).text())
+            # agency = str(agency)
+            # invoice = int(invoice)
+            del (self.stocksInfoz[agency][invoice])
             self.stockList.removeRow(row_number)
 
             item = self.List_of_agency.currentItem()
             self.get_stocks(item)
 
 
+
+
+
+
+
     def new_share(self, agency=""):
         # con, cur = check_db(db_file)
-        row_number=self.stockList.rowCount()
-        self.stockList.setRowCount(row_number + 1)
-        agency = self.List_of_agency.currentItem().text()
-        # print("ag",agency,self.stockList.currentRow())
-        invoice="0"
+
+        agency = parse_str(self.List_of_agency.currentItem().text())
+        invoice=gen_id()
 
         if agency:
             add_inp = add_stocks(agency)
         else:
             add_inp = add_stocks()
 
-
         if add_inp.exec_() == add_inp.Accepted:
+            #   0        1       2       3      4     5       6          7         8    9    10     11       12
+            # agency, xchange, equity, tdate, sdate, price, quantity, unit_brock, gst, stt, itax, comment, save_db
             new_row = add_inp.get_inp()
-            # print("New : ",new_row)
-            new_row = list(add_inp.get_inp())
+            rowList = list(add_inp.get_inp())
+
+            price = rowList[5]
+            Numb = rowList[6]
+            brock = rowList[7]
+            gst = rowList[8]
+            stt = rowList[9]
+            itax = rowList[10]
+            comments = rowList[11]
             save_db = new_row[12]
-            del new_row[-1]
+            del rowList[-1]
 
-            if save_db:
-                # print(save_db)
-                # check_msg()
-                invoice=saveStockDB(new_row)
-            #
-            # print('New row:', row_number)
-            # print(invoice, new_row)
-
-            # print(type(updated_row))
-            # self.add_update_row(updated_row,row,invoice)
-            price = new_row[5]
-            Numb = new_row[6]
-            brock = new_row[7]
-            gst = new_row[8]
-            stt = new_row[9]
-            itax = new_row[10]
-
-            # print( price, Numb, brock, gst, stt, itax)
-            input_data = price, Numb, brock, gst, stt, itax
-            output_data = self.stock_purchase_calc(input_data)
-            new_row.insert(7, str(output_data[0]))
-            new_row.insert(11, str(output_data[2]))
-            new_row.insert(13, str(output_data[1]))
-            new_row.insert(14, str(output_data[3]))
-            new_row.insert(15, str(output_data[4]))
-
-
-            # print('Updated row:',row_number)
-            # print(invoice,updated_row)
-            # print(output_data)
-            # new_row[0] = invoice
-            # print(new_row)
-            for i in range(5, len(new_row) - 1):
-                data = new_row[i]
-                # print(i,type(data),type(parse_str(data)),data )
-                new_row[i] = parse_str(data)
-
-            agency = str(agency)
-            inv = parse_str(invoice)
-            # data1 = self.stockInfo[agency][inv]
-            update1 = new_row[1:]
-
-            self.stockInfo[agency][inv] = tuple(update1)
-            data2 = self.stockInfo[agency][inv]
-
-            # print(invoice)
-            # # print(data1)
-            # print(update1)
-            # print(data2)
-            # print(new_row)
-            #
+            # print("new",new_row)
             # exit()
 
-            # for column_number, data in enumerate(new_row):
-            #     self.stockList.setSortingEnabled(False)
-            #     self.stockList.setItem(row_number, column_number, QTableWidgetItem(str(data)))
+            if save_db:
+                invoice = saveStockDB(new_row,invoice,"append")
 
-            # table_sort_color(self.stockList)
+            # rowList.insert(0, k1)
+            #   0        1       2       3      4     5       6          7         8    9    10     11       12
+            # agency, xchange, equity, tdate, sdate, price, quantity, unit_brock, gst, stt, itax, comment, save_db
+            input_data = price, Numb, brock, gst, stt, itax
+            output_data = self.stock_purchase_calc(input_data)
+            # contr_amount, net_amount, gst_stt_brk, actual_price, Zero_profit
+            # self.stockInfo_key = ['0 exchange', '1 equity', '2 Tdate', '3 Sdate', '5 Tprice', '6 quantity', '7 ContAmount',
+            #                       '8 unit_brokerage', '9 gst', '10 stt', '11 gst_stt_br', '12 itax',
+            #                       '13 NetAmount', '14 Oprice', '15 Zprice', '16 remarks', '17 invoice']
+
+            # print(output_data)
+            rowList.insert(7, output_data[0])
+            rowList.insert(11, output_data[2])
+            rowList.insert(13, output_data[1])
+            rowList.insert(14, output_data[3])
+            rowList.insert(15, output_data[4])
+
+            del rowList[0]
+
+
+            key = agency
+            k1 = invoice
+
+            self.stocksInfoz[key][k1]['exchange'] = rowList[0]
+            self.stocksInfoz[key][k1]['equity'] = rowList[1]
+            self.stocksInfoz[key][k1]['Tdate'] = rowList[2]
+            self.stocksInfoz[key][k1]['Sdate'] = rowList[3]
+            self.stocksInfoz[key][k1]['Tprice'] = parse_str(rowList[4])
+            self.stocksInfoz[key][k1]['quantity'] = parse_str(rowList[5])
+            self.stocksInfoz[key][k1]['ContAmount'] = parse_str(rowList[6])
+            self.stocksInfoz[key][k1]['unit_brokerage'] = parse_str(rowList[7])
+            self.stocksInfoz[key][k1]['gst'] = parse_str(rowList[8])
+            self.stocksInfoz[key][k1]['stt'] = parse_str(rowList[9])
+            self.stocksInfoz[key][k1]['gst_stt_br'] = parse_str(rowList[10])
+            self.stocksInfoz[key][k1]['itax'] = parse_str(rowList[11])
+            self.stocksInfoz[key][k1]['NetAmount'] = parse_str(rowList[12])
+            self.stocksInfoz[key][k1]['Oprice'] = parse_str(rowList[13])
+            self.stocksInfoz[key][k1]['Zprice'] = parse_str(rowList[14])
+            self.stocksInfoz[key][k1]['remarks'] = rowList[15]
+
+
+            row_number = self.stockList.rowCount()
+            self.stockList.setRowCount(row_number + 1)
+            one_stock = make_nested_dict0()
+            one_stock.clear()
+            one_stock = self.get_stock_info(key, k1)
+
+            one_stock['invoice'] = int(k1)
+            one_stock['current_price'] = 0.0
+            one_stock['unit_gain'] = 0.0
+            one_stock['total_gain'] = 0.0
+
+            new_table = []
+            new_table.clear()
+            for info in self.stock_disp_key:
+                data = one_stock[info]
+                new_table.append(data)
+
+            new_table = tuple(new_table)
+            self.add_update_disp(row_number, new_table, agency, True)
+
+            table_sort_color(self.stockList)
+            item = self.List_of_agency.currentItem()
+            self.get_stocks(item)
+
         else:
             pass
-            # Message box
 
-        item = self.List_of_agency.currentItem()
-        self.get_stocks(item)
+        return
+
+
+    def stock_sold(self):
+
+        if self.stockList.selectedItems():
+            agency = parse_str(self.List_of_agency.currentItem().text())
+            row_number = self.stockList.currentRow()
+            invoice = int(self.stockList.item(row_number, 0).text())
+
+            one_stock = make_nested_dict0()
+            one_stock.clear()
+            one_stock = self.get_stock_info(agency, invoice)
+
+            # print("sold1", self.stocksInfoz[agency][int(invoice)])
+            # print("sold2", one_stock)
+
+            row_val = []
+            row_val.clear()
+            row_val.append(agency)
+            row_val.append(one_stock["exchange"])
+            row_val.append(one_stock["equity"])
+            row_val.append(one_stock["Tdate"])
+            row_val.append(one_stock["Sdate"])
+            row_val.append(one_stock["Oprice"])
+            row_val.append(one_stock["quantity"])
+            row_val.append(one_stock["unit_brokerage"])
+            row_val.append(one_stock["gst"])
+            row_val.append(one_stock["stt"])
+            row_val.append(one_stock["itax"])
+            # row_val.append(one_stock["Oprice"])
+
+            # print(row_val)
+            # print(type(row_val))
+
+
+            sold_inp = sold_stocks(row_val)
+            if sold_inp.exec_() == sold_inp.Accepted:
+                #   0       1        2        3         4        5      6       7       8        9          10  11    12    13       14
+                # agency, xchange, equity, buy_date, buy_price, tdate, sdate, price, quantity, unit_brock, gst, stt, itax, comment, self.save_db
+                new_row = sold_inp.get_inp()
+                rowList = list(sold_inp.get_inp())
+
+                bprice = float(rowList[4])
+                Numb = rowList[6]
+                # brock = rowList[7]
+                # gst = rowList[8]
+                # stt = rowList[9]
+                # itax = rowList[10]
+                # comments = rowList[11]
+                save_db = new_row[14]
+
+                del rowList[-1]
+
+                # print(rowList)
+
+                # exit()
+
+
+                # price=rowList[7]
+                # Numb=float(rowList[8])
+                # brok=rowList[9]
+                # gst=rowList[10]
+                # stt=rowList[11]
+                # itax=rowList[12]
+                # input_data = price, Numb, brok, gst, stt, itax
+                # output_data = self.stock_sale_calc(input_data)
+                #
+                # net_amountSale=float(output_data[1])
+                #
+                # print(type(bprice))
+                # print(type(Numb))
+                # net_amountBuy=bprice*Numb
+                # NetGain=net_amountSale-net_amountBuy
+                #
+                # print(output_data)
+                # print(NetGain)
+
+
+                # contr_amount, net_amount, gst_stt_brk, actual_price, Zero_profit
+
+                # price, Quant, Brockerage, gst, stt, itax = input_data
+
+
+
+                if save_db:
+                    print(save_db)
+                    ids = saveStockSaleDB(rowList, invoice)
+
+
 
 
 
     def update_Stock(self,item):
-        agency = self.List_of_agency.currentItem().text()
+
         if self.stockList.selectedItems():
+            agency = parse_str(self.List_of_agency.currentItem().text())
             row_number = self.stockList.currentRow()
-            invoice = self.stockList.item(row_number, 0).text()
-            row_val=[]
-            for i in range(1,self.stockList.columnCount()):
-                row_val.append(self.stockList.item(row_number,i).text())
+            invoice = int(self.stockList.item(row_number, 0).text())
 
-            row_val.insert(0,agency)
-            # print(invoice, row_val)
+            one_stock = make_nested_dict0()
+            one_stock.clear()
+            one_stock = self.get_stock_info(agency, invoice)
 
-            update_inp=update_stocks(row_val)
+            # print("updated1", self.stocksInfoz[agency][int(invoice)])
+            # print("updated2", one_stock)
+
+
+            row_val = []
+            row_val.clear()
+            row_val.append(agency)
+            row_val.append(one_stock["exchange"])
+            row_val.append(one_stock["equity"])
+            row_val.append(one_stock["Tdate"])
+            row_val.append(one_stock["Sdate"])
+            row_val.append(one_stock["Tprice"])
+            row_val.append(one_stock["quantity"])
+            row_val.append(one_stock["unit_brokerage"])
+            row_val.append(one_stock["gst"])
+            row_val.append(one_stock["stt"])
+            row_val.append(one_stock["itax"])
+            row_val.append(one_stock["remarks"])
+
+            # print(row_val)
+
+            update_inp = update_stocks(row_val)
             if update_inp.exec_() == update_inp.Accepted:
-            # if update_inp == update_inp.Accepted:
-               updated_row=list(update_inp.get_inp())
-               save_db = updated_row[12]
-               del updated_row[-1]
+                new_row = update_inp.get_inp()
+                rowList = list(update_inp.get_inp())
 
-               if save_db :
-                  # print(save_db)
-                  # check_msg()
-                  id=saveStockDB(updated_row,invoice)
-
-
-               # print('Updated row:', row_number)
-               # print(invoice, updated_row)
-
-               # print(type(updated_row))
-               # self.add_update_row(updated_row,row,invoice)
-               price=updated_row[5]
-               Numb=updated_row[6]
-               brock=updated_row[7]
-               gst=updated_row[8]
-               stt=updated_row[9]
-               itax=updated_row[10]
+                price = rowList[5]
+                Numb = rowList[6]
+                brock = rowList[7]
+                gst = rowList[8]
+                stt = rowList[9]
+                itax = rowList[10]
+                comments = rowList[11]
+                save_db = new_row[12]
+                del rowList[-1]
 
 
-               # print( price, Numb, brock, gst, stt, itax)
-               input_data = price, Numb, brock, gst, stt, itax
-               output_data = self.stock_purchase_calc(input_data)
-               updated_row.insert(7,output_data[0])
-               updated_row.insert(11,output_data[2])
-               updated_row.insert(13,output_data[1])
-               updated_row.insert(14,output_data[3])
-               updated_row.insert(15,output_data[4])
-               # print('Updated row:',row_number)
-               # print(invoice,updated_row)
-               # print(output_data)
-               for i in range(5,len(updated_row)-1):
-                   data=updated_row[i]
-                   # print(i,type(data),type(parse_str(data)),data )
-                   updated_row[i]=parse_str(data)
+                if save_db:
+                    ids = saveStockDB(new_row, invoice, "update")
 
-               agency = str(agency)
-               inv = parse_str(invoice)
-               data1 = self.stockInfo[agency][inv]
-               update1=updated_row[1:]
-               self.stockInfo[agency][inv]=tuple(update1)
-               data2 = self.stockInfo[agency][inv]
 
-               updated_row[0] = invoice
+                # rowList.insert(0, k1)
+                #   0        1       2       3      4     5       6          7         8    9    10     11       12
+                # agency, xchange, equity, tdate, sdate, price, quantity, unit_brock, gst, stt, itax, comment, save_db
+                input_data = price, Numb, brock, gst, stt, itax
+                output_data = self.stock_purchase_calc(input_data)
 
-               # print(invoice)
-               # print(data1)
-               # print(update1)
-               # print(data2)
-               # print(updated_row)
-               #
-               # exit()
+                rowList.insert(7, output_data[0])
+                rowList.insert(11, output_data[2])
+                rowList.insert(13, output_data[1])
+                rowList.insert(14, output_data[3])
+                rowList.insert(15, output_data[4])
 
-               # for column_number, data in enumerate(updated_row):
-               #     self.stockList.setSortingEnabled(False)
-               #     self.stockList.setItem(row_number, column_number, QTableWidgetItem(str(data)))
-               #
-               # table_sort_color(self.stockList)
+                del rowList[0]
 
-            else:
-                pass
-                # Message box
 
-            item = self.List_of_agency.currentItem()
-            self.get_stocks(item)
+                key = agency
+                k1 = invoice
+                # print(type(key))
+                # print(type(k1))
 
-    def calculate_total_gain(self):
-        pass
+                self.stocksInfoz[key][k1]['exchange'] = rowList[0]
+                self.stocksInfoz[key][k1]['equity'] = rowList[1]
+                self.stocksInfoz[key][k1]['Tdate'] = rowList[2]
+                self.stocksInfoz[key][k1]['Sdate'] = rowList[3]
+                self.stocksInfoz[key][k1]['Tprice'] = parse_str(rowList[4])
+                self.stocksInfoz[key][k1]['quantity'] = parse_str(rowList[5])
+                self.stocksInfoz[key][k1]['ContAmount'] = parse_str(rowList[6])
+                self.stocksInfoz[key][k1]['unit_brokerage'] = parse_str(rowList[7])
+                self.stocksInfoz[key][k1]['gst'] = parse_str(rowList[8])
+                self.stocksInfoz[key][k1]['stt'] = parse_str(rowList[9])
+                self.stocksInfoz[key][k1]['gst_stt_br'] = parse_str(rowList[10])
+                self.stocksInfoz[key][k1]['itax'] = parse_str(rowList[11])
+                self.stocksInfoz[key][k1]['NetAmount'] = parse_str(rowList[12])
+                self.stocksInfoz[key][k1]['Oprice'] = parse_str(rowList[13])
+                self.stocksInfoz[key][k1]['Zprice'] = parse_str(rowList[14])
+                self.stocksInfoz[key][k1]['remarks'] = rowList[15]
+
+                row_number = self.stockList.rowCount()
+                # self.stockList.setRowCount(row_number + 1)
+                one_stock = make_nested_dict0()
+                one_stock.clear()
+                one_stock = self.get_stock_info(key, k1)
+
+                # print(rowList[15])
+
+                one_stock['invoice'] = int(k1)
+                one_stock['current_price'] = 0.0
+                one_stock['unit_gain'] = 0.0
+                one_stock['total_gain'] = 0.0
+
+                # print( self.stocksInfoz[key][k1])
+
+                # print("up-->", one_stock)
+                # exit()
+
+                new_table = []
+                new_table.clear()
+                for info in self.stock_disp_key:
+                    data = one_stock[info]
+                    new_table.append(data)
+                    # print(info,data)
+
+                new_table = tuple(new_table)
+                self.add_update_disp(row_number, new_table, agency, True)
+                table_sort_color(self.stockList)
+                # print("update",new_table)
+                item = self.List_of_agency.currentItem()
+                self.get_stocks(item)
+        else:
+            pass
 
 
     def calculate_sum(self,agency=""):
 
-        currentAgency=self.stockInfo[agency]
+        if not agency:
+            item = self.List_of_agency.currentItem()
+            agency = str(item.text())
+
+        stockz=self.stocksInfoz[agency]
         net_invetment=0.0
         net_extra=0.0
-        # net_gain=0.0
-        for key,value in  currentAgency.items():
-            value=list(value)
-            # print("#",value)
-            net_invetment=net_invetment+value[12]
-            # net_gain=net_gain+value[13]
-            net_extra=net_extra+value[10]
 
-            # print(key,value)
-        agencyInvestmt="{:.{}f}".format(net_invetment, 3)
+        for key,value in  stockz.items():
+            net_invetment=net_invetment+parse_str(value['NetAmount'])
+            net_extra=net_extra+parse_str(value['gst_stt_br'])
+
+        agencyInvestmt="{:.{}f}".format(net_invetment,3)
         agencyCharges="{:.{}f}".format(net_extra, 3)
-        # agencyGain="{:.{}f}".format(net_gain, 3)
-        # self.totalInvestment="{:.{}f}".format(net_invetment, 3)
-        # print(net_invetment,net_extra)
 
+        self.agencyInvestmt.setText(str(agencyInvestmt))
+        self.agencyCharges.setText(str(agencyCharges))
 
-        return agencyInvestmt,agencyCharges
+        return
 
 
     def refresh_Stock(self):
