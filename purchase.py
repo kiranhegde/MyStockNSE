@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import Qt,QPoint,pyqtSlot,QDateTime,QVariant
+from babel.numbers import format_currency
 
 import ast
 from collections import defaultdict
@@ -71,31 +72,22 @@ def set_column_sort(table,columnIndex):
                     # else:
                     val = parse_str(value)
                     item.setData(Qt.DisplayRole, val)
+                    # if j ==12:
+                    #     print(i,j,val,type(val))
 
                     table.setItem(i,j,item)
                     table.setEditTriggers(QTableWidget.NoEditTriggers)
                     # table.itemDoubleClicked.connect(self.edit_item)
                     # print(j,value,type(value))
 
-def table_sort_color(table):
-    # Sort column
-    columnIndex1 = []
-    columnIndex1.clear()
-    columnIndex1 = [i for i in range(4,12)]
-    columnIndex1.insert(0, 0)
-    set_column_sort(table, columnIndex1)
-    table.sortByColumn(2, Qt.AscendingOrder)
+def table_sort_color(table,sortIdx,RedIdx,GreenIdx):
 
-    # Color column background
-    columnIndex = []
-    columnIndex.clear()
-    columnIndex = [2, 5,9,10]
-    setColortoColumn(table, columnIndex, QColor(0, 255, 0))
-    columnIndex.clear()
-    columnIndex = [11,12]
-    setColortoColumn(table, columnIndex, QColor(255, 0, 0))
-    columnIndex.clear()
+    set_column_sort(table, sortIdx)
+    table.sortByColumn(2, Qt.AscendingOrder)
+    setColortoColumn(table, GreenIdx, QColor(0, 255, 0))
+    setColortoColumn(table, RedIdx, QColor(255, 0, 0))
     table.setSortingEnabled(True)
+
 
 def setColortoColumn(table, columnIndex, color):
     fnt = QFont()
@@ -112,6 +104,7 @@ def setColortoColumn(table, columnIndex, color):
                 else:
                     table.item(i, j).setBackground(color)
                     table.item(i, j).setFont(fnt)
+
 
 
 
@@ -155,6 +148,7 @@ class purchase_list(QWidget):
 
     def UI(self):
         self.table_header_info()
+        self.display_color_sort()
         self.widgets()
         # self.load_from_db()
         self.layouts()
@@ -196,6 +190,17 @@ class purchase_list(QWidget):
         self.stock_disp_key = ['invoice','exchange', 'equity', 'Tdate', 'Tprice', 'quantity','gst_stt_br', 'NetAmount', 'Oprice', 'Zprice', 'current_price',
                                'unit_gain', 'total_gain','remarks']
 
+    def display_color_sort(self):
+        self.sort_colmn_by_index = []
+        self.sort_colmn_by_index = [i for i in range(4, 12)]
+        self.sort_colmn_by_index.insert(0, 0)
+        self.Red_colmn_by_index = []
+        self.Red_colmn_by_index = [11, 12]
+        self.Green_colmn_by_index = []
+        self.Green_colmn_by_index = [2, 4, 5, 9, 10]
+
+
+
     def widgets(self):
 
         fnt = QFont("Arial", 13,QFont.Bold)
@@ -226,23 +231,27 @@ class purchase_list(QWidget):
         # self.nse.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.nse.clicked.connect(self.get_nse_data)
         self.nse.setToolTip('Get latest stock price \n from NSE')
+        self.nse_delta_history=QLineEdit()
+        self.nse_delta_history.setAlignment(Qt.AlignCenter)
+        self.nse_delta_history.setText("0")
+        self.nse_days=QLabel("Days")
+
+        self.nse_delta_history.setToolTip("number of days from today \n (0-for only today)")
 
         # https: // programming.vip / docs / pyqt5 - quick - start - pyqt5 - basic - window - components.html
 
-        self.refreshAll = QPushButton('Refresh')
-        self.refreshAll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.refreshAll.setToolTip('Re-read database \n and calculate')
-        self.save2db = QPushButton('SaveDB')
-        self.save2db.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.save2db.setToolTip("Data updated will \n be saved Permanatly")
-        self.calculate = QPushButton('Compute')
-        self.calculate.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.calculate.setToolTip("Recalculate to \n updated values")
+        # self.refreshAll = QPushButton('Refresh')
+        # self.refreshAll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # self.refreshAll.setToolTip('Re-read database \n and calculate')
+        # self.save2db = QPushButton('SaveDB')
+        # self.save2db.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # self.save2db.setToolTip("Data updated will \n be saved Permanatly")
+        # self.calculate = QPushButton('Compute')
+        # self.calculate.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # self.calculate.setToolTip("Recalculate to \n updated values")
 
         self.List_of_agency = QListWidget()
-
         agency,self.stockDB =read_db()
-
         self.List_of_agency=self.load_agency(agency)
 
         self.stocksInfoz=self.store_stocks()
@@ -274,7 +283,7 @@ class purchase_list(QWidget):
         self.get_stocks(item)
 
     def get_nse_data(self):
-        delta=1
+        delta=parse_str(self.nse_delta_history.text())
         n_rows = self.stockList.rowCount()
         j=2
         jj=8
@@ -310,17 +319,37 @@ class purchase_list(QWidget):
                     Total=float("{:.2f}".format(Total))
                     total_gain=total_gain+Total
 
-                self.stockList.setItem(i,k, QTableWidgetItem(str(current)))
-                self.stockList.setItem(i,kk, QTableWidgetItem(str(diff)))
-                self.stockList.setItem(i,kk+1, QTableWidgetItem(str(Total)))
+                Item1 = QTableWidgetItem()
+                current = parse_str(current)
+                Item1.setData(Qt.DisplayRole, current)
+
+                Item2 = QTableWidgetItem()
+                diff = parse_str(diff)
+                Item2.setData(Qt.DisplayRole, diff)
+
+                Item3 = QTableWidgetItem()
+                Total = parse_str(Total)
+                Item3.setData(Qt.DisplayRole, Total)
+                self.stockList.setSortingEnabled(False)
+                self.stockList.setItem(i,k, Item1)
+                self.stockList.setItem(i,kk, Item2)
+                self.stockList.setItem(i,kk+1, Item3)
 
             except:
-
                 print(symbol,"not found")
 
-        table_sort_color(self.stockList)
 
-        self.agencyGain.setText(str(total_gain))
+        self.display_color_sort()
+        table_sort_color(self.stockList,self.sort_colmn_by_index,self.Red_colmn_by_index,self.Green_colmn_by_index)
+        self.stockList.setSortingEnabled(True)
+
+        self.agencyGain.setText(format_currency(total_gain,'INR',locale='en_IN'))
+        self.agencyGain.setStyleSheet('color: blue')
+
+        # for i in range(n_rows):
+        #     var=self.stockList.item(i,12).text()
+        #     print(i,j,var,type(var))
+
 
 
     def layouts(self):
@@ -333,6 +362,8 @@ class purchase_list(QWidget):
         # self.buttons=QWidget()
         self.controlLayout=QHBoxLayout()
         # self.controlLayout.addStretch()
+        self.controlLayout.addWidget(self.nse_delta_history)
+        self.controlLayout.addWidget(self.nse_days)
         self.controlLayout.addWidget(self.nse)
         # self.controlLayout.addWidget(self.refreshAll)
         # self.controlLayout.addWidget(self.calculate)
@@ -448,7 +479,8 @@ class purchase_list(QWidget):
             self.add_update_disp(row_number,new_table,agncy,False)
 
         self.stockList.setSortingEnabled(True)
-        table_sort_color(self.stockList)
+        # table_sort_color(self.stockList)
+        table_sort_color(self.stockList, self.sort_colmn_by_index, self.Red_colmn_by_index, self.Green_colmn_by_index)
 
         self.calculate_sum()
 
@@ -512,13 +544,13 @@ class purchase_list(QWidget):
                 stocksInfoz[key][k1]['Oprice']=rowList[13]
                 stocksInfoz[key][k1]['Zprice']=rowList[14]
                 stocksInfoz[key][k1]['remarks']=rowList[15]
-                
+
         return stocksInfoz
 
 
     def stock_purchase_calc(self, input_data):
         price, Quant, Brockerage, gst, stt, itax = input_data
-        # print( price,Quant,Brockerage,gst,stt,itax)
+        # print( price,Quant,Brockerage,gst,stt,itax)kirakm
         price=parse_str(price)
         Quant=parse_str(Quant)
         Brockerage = parse_str(Brockerage) / 100.0
@@ -817,7 +849,8 @@ class purchase_list(QWidget):
             new_table = tuple(new_table)
             self.add_update_disp(row_number, new_table, agency, True)
 
-            table_sort_color(self.stockList)
+            # table_sort_color(self.stockList)
+            table_sort_color(self.stockList, self.sort_colmn_by_index, self.Red_colmn_by_index, self.Green_colmn_by_index)
             item = self.List_of_agency.currentItem()
             self.get_stocks(item)
 
@@ -1033,7 +1066,8 @@ class purchase_list(QWidget):
 
                 new_table = tuple(new_table)
                 self.add_update_disp(row_number, new_table, agency, True)
-                table_sort_color(self.stockList)
+                # table_sort_color(self.stockList)
+                table_sort_color(self.stockList, self.sort_colmn_by_index, self.Red_colmn_by_index, self.Green_colmn_by_index)
                 # print("update",new_table)
                 item = self.List_of_agency.currentItem()
                 self.get_stocks(item)
@@ -1058,8 +1092,13 @@ class purchase_list(QWidget):
         agencyInvestmt="{:.{}f}".format(net_invetment,3)
         agencyCharges="{:.{}f}".format(net_extra, 3)
 
-        self.agencyInvestmt.setText(str(agencyInvestmt))
-        self.agencyCharges.setText(str(agencyCharges))
+        self.agencyInvestmt.setText(format_currency(agencyInvestmt,'INR',locale='en_IN'))
+        # color=QColor(0, 255, 0)
+        # self.agencyInvestmt.set
+        self.agencyCharges.setText(format_currency(agencyCharges,'INR',locale='en_IN'))
+
+        self.agencyInvestmt.setStyleSheet('color: blue')
+        self.agencyCharges.setStyleSheet('color: blue')
 
         return
 

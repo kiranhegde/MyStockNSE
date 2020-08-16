@@ -11,6 +11,7 @@ from purchase import purchase_list
 from sales import sold_list
 from profit_list import  gain_shares
 from db_management import check_db,set_defaults,add_stocks,saveStockDB
+from transaction import show_transactions
 
 db_file = "MyInvestment.db"
 
@@ -22,8 +23,8 @@ class MyMainWindow(QMainWindow):
         self.setWindowTitle("My Investment")
         self.setGeometry(450,150,750,600)
         self.statusBar()
-        self.showMaximized()
         self.UI()
+        self.showMaximized()
 
 
     def UI(self):
@@ -37,15 +38,22 @@ class MyMainWindow(QMainWindow):
         tb.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
 
         tb.addSeparator()
-        addShare=QAction(QIcon(""),"addStockDB",self)
+        addShare=QAction(QIcon(""),"New \n StockDB",self)
         addShare.triggered.connect(self.add_stockDB)
         addShare.setStatusTip("Adding newly purchased stock")
         addShare.setToolTip("Adding newly purchased stock")
         tb.addAction(addShare)
         tb.addSeparator()
 
-        delShare = QAction(QIcon(""), "delStockDB", self)
+        delShare = QAction(QIcon(""), "Delete \n StockDB", self)
         delShare.triggered.connect(self.del_shareDB)
+        delShare.setStatusTip("Removing stock from list")
+        delShare.setToolTip("Removing stock from list")
+        tb.addAction(delShare)
+        tb.addSeparator()
+
+        delShare = QAction(QIcon(""), "Bank \nTransaction", self)
+        delShare.triggered.connect(self.bank_transaction)
         delShare.setStatusTip("Removing stock from list")
         delShare.setToolTip("Removing stock from list")
         tb.addAction(delShare)
@@ -71,6 +79,12 @@ class MyMainWindow(QMainWindow):
         # defaultVal.setToolTip("default paramter settings")
         # tb.addAction(defaultVal)
         # tb.addSeparator()
+
+    def bank_transaction(self):
+
+        bank_data = show_transactions()
+        bank_data.exec_()
+        # pass
 
 
     def add_stockDB(self):
@@ -114,7 +128,7 @@ class MyMainWindow(QMainWindow):
 
     def LoadAll(self):
         self.tabs.clear()
-        self.tabs.addTab(purchase_list(), "Investment")
+        self.tabs.addTab(purchase_list(), "Stocks")
         self.tabs.addTab(sold_list(), "Sold")
         self.tabs.addTab(gain_shares(), "Gain")
 

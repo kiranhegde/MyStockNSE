@@ -59,6 +59,63 @@ def read_db():
     return listAgency, stockDB
 
 
+def read_all_transaction():
+    con, cur = check_db(db_file)
+    paymentDB = make_nested_dict0()
+    amount = cur.execute("SELECT * FROM investment")
+    for all_row_data in amount:
+        agency=all_row_data[1]
+        ref= all_row_data[0]
+        # date0=all_row_data[4]
+        # date1=all_row_data[5]
+        # date1=QDateTime.fromString(date1,"ddmmyyyy")
+        # # print(date0,type(date1))
+        rowList=[]
+        rowList.clear()
+        rowList = list(all_row_data[2:])
+        row_data = tuple(rowList)
+        # print(row_data)
+        # stocksDB.setdefault(agency,ref)
+        paymentDB[agency][ref]=row_data
+
+    ListAgency = []
+    ListAgency.clear()
+    for key in paymentDB.keys():
+        ListAgency.append(key)
+
+    return ListAgency, paymentDB
+
+
+
+def read_all_sales():
+    con, cur = check_db(db_file)
+    salesDB = make_nested_dict0()
+    stock = cur.execute("SELECT * FROM sale")
+    for all_row_data in stock:
+        agency=all_row_data[1]
+        ref= all_row_data[0]
+        # date0=all_row_data[4]
+        # date1=all_row_data[5]
+        # date1=QDateTime.fromString(date1,"ddmmyyyy")
+        # # print(date0,type(date1))
+        rowList=[]
+        rowList.clear()
+        rowList = list(all_row_data[2:])
+        row_data = tuple(rowList)
+        # print(row_data)
+        # stocksDB.setdefault(agency,ref)
+        salesDB[agency][ref]=row_data
+
+    ListAgency = []
+    ListAgency.clear()
+    for key in salesDB.keys():
+        ListAgency.append(key)
+
+
+    return ListAgency, salesDB
+
+
+
 
 def read_all_stocks():
     con, cur = check_db(db_file)
@@ -140,6 +197,10 @@ def gen_id():
     for all_row_data in stock:
         id_list.append(all_row_data[0])
 
+    stock = cur.execute("SELECT * FROM investment")
+    for all_row_data in stock:
+        id_list.append(all_row_data[0])
+
     # print(id_list)
     stock_id = f'{random.randrange(1000, 10 ** 6)}'
     m = len(id_list) - 1
@@ -168,6 +229,92 @@ def default_parameters():
     defaults=brockerage,gst,stt,itax
 
     return defaults
+
+
+def save_transactionDB(row_data,save_mode):
+
+    con, cur = check_db(db_file)
+    stock_id = gen_id()
+
+    agency = row_data[0]
+    tdate = row_data[1]
+    amount =row_data[2]
+    tr_id = row_data[3]
+    bank0 = row_data[4]
+    bank1 = row_data[5]
+    comment = row_data[6]
+
+    if save_mode == "append":
+        print(save_mode)
+
+        if agency != "" and tdate != "" and amount != "" and bank0 != "" and bank1 != "" :
+            try:
+                query = "INSERT INTO 'investment' (id,agency,tr_date,tr_id,amount,from_bank,to_bank,remarks) VALUES(?,?,?,?,?,?,?,?)"
+                cur.execute(query, (stock_id, agency, tdate,tr_id,amount,bank0,bank1,comment))
+                con.commit()
+                # msg=QMessageBox.information("Info", "New Stock information has been added")
+                # msg.exec()
+                msgBox = QMessageBox()
+                msgBox.setWindowTitle("New Transaction")
+                msgBox.setText("new transaction added, ID: "+str(stock_id))
+                msgBox.setIcon(QMessageBox.Information)
+                msgBox.exec_()
+            except:
+                msgBox = QMessageBox()
+                msgBox.setWindowTitle("Warning")
+                msgBox.setText("Transaction information not been added")
+                msgBox.setIcon(QMessageBox.Warning)
+                msgBox.exec_()
+        else:
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("Missing !!")
+            msgBox.setText("Fields can't be empty!!!")
+            msgBox.setIcon(QMessageBox.Information)
+            msgBox.exec_()
+
+    if save_mode == "update":
+        stock_id = str(stock_id)
+        msgBox = QMessageBox()
+        msgBox.setWindowTitle("Warning")
+        msgBox.setText('Are you sure to save changes to transaction with reference number' + stock_id + " ?")
+        msgBox.setInformativeText("  Updated informatoin will be "
+                                  "  permanatly registered to the "
+                                  "  database !")
+        # msgBox.setWindowIcon(QIcon(""))
+        msgBox.setIcon(QMessageBox.Question)
+        msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msgBox.setDefaultButton(QMessageBox.No)
+        buttonY = msgBox.button(QMessageBox.Yes)
+        # buttonY.setText('Evet')
+        # buttonN = box.button(QtGui.QMessageBox.No)
+        # buttonN.setText('Iptal')
+        msgBox.exec_()
+
+        if msgBox.clickedButton() == buttonY:
+            # if msgBox == QMessageBox.Yes:
+            try:
+                query = "UPDATE investment SET agency=?,tr_date=?,tr_id=?,amount=?,from_bank=?,to_bank=?,remarks=? WHERE id=?"
+                cur.execute(query, (agency, tdate,tr_id,amount,bank0,bank1,comment, stock_id))
+                con.commit()
+                msgBox = QMessageBox()
+                msgBox.setWindowTitle("Updated !")
+                msgBox.setText("Transaction with reference number " + str(stock_id) + " has been updated")
+                msgBox.setIcon(QMessageBox.Information)
+                msgBox.exec_()
+            except:
+                msgBox = QMessageBox()
+                msgBox.setWindowTitle("Warning")
+                msgBox.setText('Transaction with reference number ' + str(stock_id) + ' has not been updated..')
+                msgBox.setIcon(QMessageBox.Warning)
+                msgBox.exec_()
+        else:
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("Aborted")
+            msgBox.setText('Changes are not updated to the database...')
+            msgBox.setIcon(QMessageBox.Information)
+            msgBox.exec_()
+
+    return stock_id
 
 
 
@@ -402,6 +549,9 @@ def delStockDB(invoice):
         msgBox.setText("Selected  stock (id: "+invoice +") has not been deleted")
         msgBox.setIcon(QMessageBox.Information)
         msgBox.exec_()
+
+
+
 
 
 

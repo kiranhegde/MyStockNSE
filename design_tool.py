@@ -1,86 +1,86 @@
-from PyQt5.QtGui import *
-
-def showStocks(self, item):
-    # https://www.tutorialexample.com/pyqt-table-add-row-data-dynamically-a-beginner-guide-pyqt-tutorial/
-    agncy = item.text()
-    self.stockList.setFont(QFont("Times", 9))
-    for i in reversed(range(self.stockList.rowCount())):
-        self.stockList.removeRow(i)
-
-    for key, value in self.stockDB.items():
-        if key == agncy:
-            for k1, val1 in value.items():
-                row_number = self.stockList.rowCount()
-                self.stockList.setRowCount(row_number + 1)
-
-                rowList = list(val1)
-                rowList.insert(0, k1)
-
-                price = rowList[5]
-                Numb = rowList[6]
-                brock = rowList[7]
-                gst = rowList[8]
-                stt = rowList[9]
-                itax = rowList[10]
-                comments = rowList[11]
-
-                input_data = price, Numb, brock, gst, stt, itax
-                output_data = self.stock_calc(input_data)
-                # output_data=list(output_data)
-                rowList.insert(7, output_data[0])
-                rowList.insert(12, output_data[1])
-                rowList.insert(11, output_data[2])
-                rowList.insert(14, output_data[3])
-                rowList.insert(15, output_data[4])
-                # print(type(rowList[15]))
-                # rowList.insert(15,comments)
-                row_data = tuple(rowList)
-                # print("->",row_data)
-                for column_number, data in enumerate(row_data):
-                    self.stockList.setSortingEnabled(False)
-                    self.stockList.setItem(row_number, column_number, QTableWidgetItem(str(data)))
-                    self.stockList.setSortingEnabled(True)
-
-    column_numbers = [2, 14, 15]
-
-    # self.setColortoColumn(self.stockList,column_numbers, QColor(0, 255, 0))
-    # self.setColortoColumn(self.stockList,2, QColor(0, 255, 0))
-    # self.stockList.sortByColumn(11,Qt.AscendingOrder)
-    # self.stockList.setSortingEnabled(True)
-    # self.stockList.setSor
-
-    self.buttonBox.addButton(self.resets, QDialogButtonBox.ResetRole)
-    self.buttonBox.accepted.connect(self.accept)
-    self.buttonBox.rejected.connect(self.reject)
-
-    def accept(self):
-        # self.output="hi"
-        super(update_stocks, self).accept()
-
-    def clearAll(self):
-
-        self.agencyEntry.setText("")
-        self.exchangeEntry.setText("")
-        self.equityEntry.setText("")
-        self.trade_dateEntry.setDate(QDate.currentDate())
-        self.trade_dateEntry.setDisplayFormat("dd/MM/yyyy")
-        self.settle_dateEntry.setDate(QDate.currentDate())
-        self.settle_dateEntry.setDisplayFormat("dd/MM/yyyy")
-        self.trade_priceEntry.setText("")
-        self.quantityEntry.setText("")
-        self.unit_brockEntry.setText("")
-        self.gst_brockEntry.setText("")
-        self.stt_Entry.setText("")
-        self.it_Entry.setText("")
-        self.remarksEntry.setText("")
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 
-    def get_inp(self):
-        return self.output
+class CollapsibleBox(QtWidgets.QWidget):
+    def __init__(self, title="", parent=None):
+        super(CollapsibleBox, self).__init__(parent)
+
+        self.toggle_button = QtWidgets.QToolButton(text=title, checkable=True, checked=False)
+        self.toggle_button.setStyleSheet("QToolButton { border: none; }")
+        self.toggle_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
+        self.toggle_button.setArrowType(QtCore.Qt.RightArrow)
+        self.toggle_button.pressed.connect(self.on_pressed)
+
+        self.toggle_animation = QtCore.QParallelAnimationGroup(self)
+
+        self.content_area = QtWidgets.QScrollArea(maximumHeight=0, minimumHeight=0)
+        self.content_area.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.content_area.setFrameShape(QtWidgets.QFrame.NoFrame)
+
+        lay = QtWidgets.QVBoxLayout(self)
+        lay.setSpacing(0)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(self.toggle_button)
+        lay.addWidget(self.content_area)
+
+        self.toggle_animation.addAnimation(QtCore.QPropertyAnimation(self, b"minimumHeight"))
+        self.toggle_animation.addAnimation(QtCore.QPropertyAnimation(self, b"maximumHeight"))
+        self.toggle_animation.addAnimation(QtCore.QPropertyAnimation(self.content_area, b"maximumHeight"))
+
+    @QtCore.pyqtSlot()
+    def on_pressed(self):
+        checked = self.toggle_button.isChecked()
+        self.toggle_button.setArrowType(QtCore.Qt.DownArrow if not checked else QtCore.Qt.RightArrow)
+        self.toggle_animation.setDirection(QtCore.QAbstractAnimation.Forward if not checked else QtCore.QAbstractAnimation.Backward)
+        self.toggle_animation.start()
+
+    def setContentLayout(self, layout):
+        lay = self.content_area.layout()
+        del lay
+        self.content_area.setLayout(layout)
+        collapsed_height = (self.sizeHint().height() - self.content_area.maximumHeight())
+        content_height = layout.sizeHint().height()
+        for i in range(self.toggle_animation.animationCount()):
+            animation = self.toggle_animation.animationAt(i)
+            animation.setDuration(500)
+            animation.setStartValue(collapsed_height)
+            animation.setEndValue(collapsed_height + content_height)
+
+        content_animation = self.toggle_animation.animationAt(self.toggle_animation.animationCount() - 1)
+        content_animation.setDuration(500)
+        content_animation.setStartValue(0)
+        content_animation.setEndValue(content_height)
 
 
+if __name__ == "__main__":
+    import sys
+    import random
 
+    app = QtWidgets.QApplication(sys.argv)
 
+    w = QtWidgets.QMainWindow()
+    w.setCentralWidget(QtWidgets.QWidget())
+    dock = QtWidgets.QDockWidget("Collapsible Demo")
+    w.addDockWidget(QtCore.Qt.LeftDockWidgetArea, dock)
+    scroll = QtWidgets.QScrollArea()
+    dock.setWidget(scroll)
+    content = QtWidgets.QWidget()
+    scroll.setWidget(content)
+    scroll.setWidgetResizable(True)
+    vlay = QtWidgets.QVBoxLayout(content)
+    for i in range(10):
+        box = CollapsibleBox("Collapsible Box Header-{}".format(i))
+        vlay.addWidget(box)
+        lay = QtWidgets.QVBoxLayout()
+        for j in range(8):
+            label = QtWidgets.QLabel("{}".format(j))
+            color = QtGui.QColor(*[random.randint(0, 255) for _ in range(3)])
+            label.setStyleSheet("background-color: {}; color : white;".format(color.name()))
+            label.setAlignment(QtCore.Qt.AlignCenter)
+            lay.addWidget(label)
 
-
-
+        box.setContentLayout(lay)
+    vlay.addStretch()
+    w.resize(640, 480)
+    w.show()
+    sys.exit(app.exec_())
