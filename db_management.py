@@ -318,6 +318,59 @@ def save_transactionDB(row_data,save_mode):
 
 
 
+def delTransDB(invoice):
+    con, cur = check_db(db_file)
+
+    msgBox = QMessageBox()
+    msgBox.setWindowTitle("Warning")
+    msgBox.setText("Are you sure to delete transaction information with reference number " + invoice + " ?")
+    msgBox.setInformativeText("transaction  information will be "
+                              "permanatly removed from the "
+                              "database !")
+    # msgBox.setWindowIcon(QIcon(""))
+    msgBox.setIcon(QMessageBox.Question)
+    msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+    msgBox.setDefaultButton(QMessageBox.No)
+    buttonY = msgBox.button(QMessageBox.Yes)
+
+
+    buttonY = msgBox.button(QMessageBox.Yes)
+    # buttonY.setText('Evet')
+    # buttonN = box.button(QtGui.QMessageBox.No)
+    # buttonN.setText('Iptal')
+    msgBox.exec_()
+
+    if msgBox.clickedButton() == buttonY:
+        # if mbox == QMessageBox.Yes:
+        try:
+            query = "DELETE FROM investment WHERE id=?"
+            cur.execute(query, (invoice,))
+            con.commit()
+
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("Deleted !")
+            msgBox.setText("transaction with reference number " + invoice + " has been deleted..")
+            msgBox.setIcon(QMessageBox.Information)
+            msgBox.exec_()
+        except:
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("Warning")
+            msgBox.setText("transaction with reference number " + invoice + " has not been deleted..")
+            msgBox.setIcon(QMessageBox.warning)
+            msgBox.exec_()
+    else:
+        msgBox = QMessageBox()
+        msgBox.setWindowTitle("Aborted")
+        msgBox.setText("Selected  transaction (id: "+invoice +") has not been deleted")
+        msgBox.setIcon(QMessageBox.Information)
+        msgBox.exec_()
+
+
+
+
+
+
+
 def saveStockSaleDB(row_data,invoice):
 
     con, cur = check_db(db_file)

@@ -4,17 +4,17 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import Qt,QPoint,pyqtSlot,QDateTime,QVariant,QDate
 
 from babel.numbers import format_currency
-from purchase import  make_nested_dict0,get_nested_dist_value,parse_str,table_sort_color
-from db_management import read_all_transaction,save_transactionDB
+from Purchase.purchase import  make_nested_dict0,get_nested_dist_value,parse_str,table_sort_color
+from db_management import read_all_transaction,save_transactionDB,delTransDB
 
 class show_transactions(QDialog):
 
     def __init__(self, parent=None):
         super(show_transactions, self).__init__(parent)
         self.setWindowModality(Qt.ApplicationModal)
-        self.setWindowTitle("Stock Details")
+        self.setWindowTitle("Transaction Details")
         # self.setWindowIcon(QIcon('icons/icon.ico'))
-        self.setGeometry(350, 350, 1050, 450)
+        self.setGeometry(350, 350, 1150, 600)
         self.setFixedSize(self.size())
         # self.stock_id=stock_id
         # self.stock_info=stock_info
@@ -32,8 +32,8 @@ class show_transactions(QDialog):
         self.headerName.append("Reference")  # 0
         self.headerName.append("Agency")  # 1
         self.headerName.append("Transaction Date")  # 2
-        self.headerName.append("Transaction \n amount")  # 3
-        self.headerName.append("Transaction id")  # 4
+        self.headerName.append("Transaction id")  # 3
+        self.headerName.append("Transaction \n amount")  # 4
         self.headerName.append("From Bank")  # 5
         self.headerName.append("To Bank")  # 6
         self.headerName.append("Remarks")  # 7
@@ -43,13 +43,13 @@ class show_transactions(QDialog):
         self.index_disp = [0, 1, 2, 3, 4, 5, 6, 7]
         self.col_disp = len(self.index_disp)
         self.db_index = []
-        self.db_index = ['id', 'agency', 'TransactionDate', 'TransactionAmount', 'TransactionID', 'FromBank','ToBank', 'Remarks']
+        self.db_index = ['id', 'agency', 'TransactionDate', 'TransactionID', 'TransactionAmount', 'FromBank','ToBank', 'Remarks']
 
         self.stock_key = []
-        self.stockInfo_key = ['id', 'agency', 'TransactionDate', 'TransactionAmount', 'TransactionID', 'FromBank','ToBank', 'Remarks']
+        self.stockInfo_key = ['id', 'agency', 'TransactionDate', 'TransactionID', 'TransactionAmount', 'FromBank','ToBank', 'Remarks']
 
         self.stock_disp_key = []
-        self.stock_disp_key = ['id', 'agency', 'TransactionDate', 'TransactionAmount', 'TransactionID', 'FromBank','ToBank', 'Remarks']
+        self.stock_disp_key = ['id', 'agency', 'TransactionDate', 'TransactionID', 'TransactionAmount', 'FromBank','ToBank', 'Remarks']
 
         self.sort_colmn_by_index = []
         # self.sort_colmn_by_index = [0,3]
@@ -58,7 +58,7 @@ class show_transactions(QDialog):
         self.Red_colmn_by_index = []
         # self.Red_colmn_by_index = [10, 14, 15]
         self.Green_colmn_by_index = []
-        self.Green_colmn_by_index = [3]
+        self.Green_colmn_by_index = [4]
 
     def widgets(self):
 
@@ -69,6 +69,9 @@ class show_transactions(QDialog):
 
         self.agencyName = QLabel("AgencyName")
         self.agencyName.setFont(fnt)
+
+        self.agencyInvestmt = QLabel("0")
+        self.agencyInvestmt.setFont(fnt)
 
         self.add_trans=QPushButton("Add")
         self.add_trans.clicked.connect(self.new_trans)
@@ -117,6 +120,7 @@ class show_transactions(QDialog):
         Table.setSortingEnabled(False)
         header.setFont(QFont("Times", 12))
         Table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        Table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         Table.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         # stockTable.horizontalHeader().setSectionResizeMode(0,QHeaderView.Stretch)
 
@@ -175,7 +179,33 @@ class show_transactions(QDialog):
 
 
     def del_transDB(self):
-        pass
+        agency = self.List_of_agency.currentItem().text()
+        invoice = ""
+        if self.transactionList.selectedItems():
+            row_number = self.transactionList.currentRow()
+            invoice = self.transactionList.item(row_number, 0).text()
+            agency = str(agency)
+            deltransDB = delTransDB(invoice)
+            mbox = QMessageBox.question(self, "Delete from table ?",
+                                        "Display table still showing transaction with  ID: " + str(invoice),
+                                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if mbox == QMessageBox.Yes:
+                try:
+                    row_number = self.transactionList.currentRow()
+                    invoice = self.transactionList.item(row_number, 0).text()
+                    agency = str(agency)
+                    invoice = parse_str(invoice)
+                    del (self.transInfoz[agency][invoice])
+                    self.stockList.removeRow(row_number)
+                    QMessageBox.information(self, "Info", "transaction with reference number " + str(
+                        invoice) + " has been deleted from table")
+                except:
+                    QMessageBox.information(self, "Warning", "transaction with reference number " + str(
+                        invoice) + " has not been deleted from table")
+
+        item = self.List_of_agency.currentItem()
+        self.get_trans(item)
+
 
     def update_trans(self):
         pass
@@ -202,7 +232,8 @@ class show_transactions(QDialog):
 
         self.agency_summaryLayout = QGridLayout()
         self.agency_summaryLayout.addWidget(self.agencyName, 0, 0)
-        self.agency_summaryLayout.addWidget(QLabel('Total Investment : '), 0, 1)
+        self.agency_summaryLayout.addWidget(QLabel('Total Transaction : '), 0, 1)
+        self.agency_summaryLayout.addWidget(self.agencyInvestmt, 0, 2)
 
         self.summaryGroupBox = QGroupBox("Agency")
         self.summaryGroupBox.setLayout(self.agency_summaryLayout)
@@ -244,11 +275,12 @@ class show_transactions(QDialog):
 
                 # 'id', 'agency', 'TransactionDate', 'TransactionAmount', 'TransactionID', 'FromBank', 'ToBank', 'Remarks'
 
+
                 transInfoz[key][k1]['id'] = k1
                 transInfoz[key][k1]['agency'] = key
                 transInfoz[key][k1]['TransactionDate'] = rowList[0]
-                transInfoz[key][k1]['TransactionAmount'] = rowList[1]
-                transInfoz[key][k1]['TransactionID'] = rowList[2]
+                transInfoz[key][k1]['TransactionAmount'] = rowList[2]
+                transInfoz[key][k1]['TransactionID'] = rowList[1]
                 transInfoz[key][k1]['FromBank'] = rowList[3]
                 transInfoz[key][k1]['ToBank'] = rowList[4]
                 transInfoz[key][k1]['Remarks'] = rowList[5]
@@ -300,7 +332,7 @@ class show_transactions(QDialog):
         self.transactionList.setSortingEnabled(True)
         table_sort_color(self.transactionList, self.sort_colmn_by_index, self.Red_colmn_by_index, self.Green_colmn_by_index)
 
-        # self.calculate_sum()
+        self.calculate_tr_sum()
 
         return
 
@@ -319,6 +351,25 @@ class show_transactions(QDialog):
 
         # if do_sum:
         #     self.calculate_sum(agency)
+
+    def calculate_tr_sum(self, agency=""):
+
+        if not agency:
+            item = self.List_of_agency.currentItem()
+            agency = str(item.text())
+
+        tranz = self.transInfoz[agency]
+        net_invetment = 0.0
+        net_extra = 0.0
+
+        for key, value in tranz.items():
+            net_invetment = net_invetment + parse_str(value['TransactionAmount'])
+
+        agencyInvestmt = "{:.{}f}".format(net_invetment, 3)
+        self.agencyInvestmt.setText(format_currency(agencyInvestmt, 'INR', locale='en_IN'))
+        self.agencyInvestmt.setStyleSheet('color: blue')
+
+        return
 
 
 class add_new_trans(QDialog):
@@ -402,9 +453,9 @@ class add_new_trans(QDialog):
         # # self.tr_dateEntry.setDateTime(QDateTime(QDate(2020, 08, 16)))
         # self.amountEntry.setText("109")
         # self.tr_idEntry.setText("200")
-        # self.fromBnkEntry.setText("SBI")
-        # self.toBnkEntry.setText("Kotak")
-        # self.remarksEntry.setText(" Testing...")
+        self.fromBnkEntry.setText("SBI")
+        self.toBnkEntry.setText("Kotak Mahindra securities ltd")
+        self.remarksEntry.setText("Equity")
 
     def state_changed(self):
         self.save_db = True

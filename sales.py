@@ -6,7 +6,7 @@ from babel.numbers import format_currency
 
 from db_management import read_all_sales
 # from purchase import import load_agency
-from purchase import  make_nested_dict0,get_nested_dist_value,parse_str,table_sort_color
+from Purchase.purchase import  make_nested_dict0,get_nested_dist_value,parse_str,table_sort_color
 
 
 
@@ -82,8 +82,8 @@ class sold_list(QWidget):
         self.agencyGain = QLabel("0")
         self.agencyGain.setFont(fnt)
 
-        self.agencyInvestmt = QLabel("0")
-        self.agencyInvestmt.setFont(fnt)
+
+
         self.agencyCharges = QLabel("0")
         self.agencyCharges.setFont(fnt)
 
@@ -121,8 +121,8 @@ class sold_list(QWidget):
         # self.agencyGain = QLabel("0")
         # self.agencyGain.setFont(fnt)
         #
-        # self.agencyInvestmt = QLabel("0")
-        # self.agencyInvestmt.setFont(fnt)
+        self.agencyInvestmt = QLabel("0")
+        self.agencyInvestmt.setFont(fnt)
         # self.agencyCharges = QLabel("0")
         # self.agencyCharges.setFont(fnt)
         #
