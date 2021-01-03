@@ -6,7 +6,7 @@ from babel.numbers import format_currency
 import ast
 from collections import defaultdict
 from db_management import read_db,add_stocks,update_stocks,saveStockDB,delStockDB,\
-    show_stock_info,gen_id,sold_stocks,saveStockSaleDB
+    show_stock_info,gen_id,sold_stocks,saveStockSaleDB,average_stocks
 from get_nse_data import download_data_for_month,get_latest_price
 
 
@@ -304,7 +304,7 @@ class purchase_list(QWidget):
             brock=0.4
             gst=18.0
             stt=0.1
-            itax=30.0
+            itax=10.0
             # print(symbol)
 
             try:
@@ -462,6 +462,7 @@ class purchase_list(QWidget):
         # print(type(agncy))
         self.stockList.setRowCount(0)
         self.agencyName.setText(agncy)
+        self.agencyGain.setText("0")
 
         stockz=get_nested_dist_value(self.stocksInfoz,agncy)
         one_stock = make_nested_dict0()
@@ -558,7 +559,7 @@ class purchase_list(QWidget):
 
     def stock_purchase_calc(self, input_data):
         price, Quant, Brockerage, gst, stt, itax = input_data
-        # print( price,Quant,Brockerage,gst,stt,itax)kirakm
+        # print( price,Quant,Brockerage,gst,stt,itax)
         price=parse_str(price)
         Quant=parse_str(Quant)
         Brockerage = parse_str(Brockerage) / 100.0
@@ -575,6 +576,8 @@ class purchase_list(QWidget):
         contr_amount = price * Quant
         net_amount = net_total + gst_brockerage + stt_net_total
         gst_stt_brk = net_amount - contr_amount
+        if Quant == 0:
+            Quant=1
         actual_price = net_amount / Quant
 
         contr_amount = round(contr_amount, 3)
@@ -587,6 +590,7 @@ class purchase_list(QWidget):
 
     def stock_sale_calc(self, input_data):
         price, Quant, Brockerage, gst, stt, itax = input_data
+        # print('price,Quant,Brockerage,gst,stt,itax')
         # print( price,Quant,Brockerage,gst,stt,itax)
         price = parse_str(price)
         Quant = parse_str(Quant)
@@ -611,6 +615,9 @@ class purchase_list(QWidget):
         gst_stt_brk = round(gst_stt_brk, 3)
         actual_price = round(actual_price, 3)
         Zero_profit = round((actual_price + gst_stt_brk /float(Quant)), 3)
+
+        print('contr_amount, net_amount, gst_stt_brk, actual_price, Zero_profit')
+        print(contr_amount, net_amount, gst_stt_brk, actual_price, Zero_profit)
 
         return contr_amount, net_amount, gst_stt_brk, actual_price, Zero_profit
 
@@ -664,9 +671,11 @@ class purchase_list(QWidget):
         # refreshAct = QAction(QIcon(""), 'Refresh', self, triggered=self.refresh_Stock)
         dispAct = QAction(QIcon(""), 'Show', self, triggered=self.show_Stock)
         soldAct = QAction(QIcon(""), 'Sold', self, triggered=self.stock_sold)
+        avgAct = QAction(QIcon(""), 'Average', self, triggered=self.stock_avg)
         addAct = self.menu.addAction(addAct)
         editStk = self.menu.addAction(updateAct)
         dispStk = self.menu.addAction(dispAct)
+        avgStk = self.menu.addAction(avgAct)
         # saveStk = self.menu.addAction(saveAct)
         remStk = self.menu.addAction(remAct)
         dbremStk = self.menu.addAction(dbremAct)
@@ -675,6 +684,31 @@ class purchase_list(QWidget):
         soldStk = self.menu.addAction(soldAct)
 
         self.menu.exec_(self.sender().viewport().mapToGlobal(pos))
+
+    def stock_avg(self):
+
+        if self.stockList.selectedItems():
+            agency = self.List_of_agency.currentItem().text()
+            row_number = self.stockList.currentRow()
+            invoice = int(self.stockList.item(row_number, 0).text())
+            one_stock = self.get_stock_info(agency, invoice)
+
+            stock_data = []
+            stock_data.clear()
+            stock_data.append(one_stock["exchange"])
+            stock_data.append(one_stock["equity"])
+            stock_data.append(one_stock["Tdate"])
+            stock_data.append(one_stock["Tprice"])
+            stock_data.append(one_stock["quantity"])
+            stock_data.append(one_stock["Oprice"])
+
+            if invoice:
+                # print(stock_data)
+                showInfo = average_stocks(stock_data)
+                showInfo.exec_()
+            else:
+                pass
+
 
 
     def show_Stock(self):

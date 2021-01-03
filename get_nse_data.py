@@ -1,4 +1,20 @@
 
+def get_latest_price(Symbol):
+    import pandas_datareader.data  as web
+    import datetime
+
+    LastPrice = web.get_data_yahoo(Symbol)
+    # print(LastPrice.tail(2))
+    # print(list(LastPrice))
+    # exit()
+    LastPrice = LastPrice.at[LastPrice.index[-1], 'Adj Close']
+
+    return round(LastPrice, 2)
+#
+# Symbol="KOPRAN.NS"
+# CurrentPrice=get_latest_price(Symbol)
+# print(CurrentPrice)
+
 
 def download_data_for_month(Symbol,delta):
     from nsepy import get_history as gh
@@ -58,3 +74,13 @@ def get_recommendation(symbol,delta):
     # print(analysis.time,analysis.symbol,analysis.exchange,analysis.screener)
     return analysis.summary
 
+#
+# units = {"Minute": "m", "Hour": "h", "Day": "d", "Week": "W", "Month": "M"}
+#
+# symbol="bsoft"
+# delta="1D"
+# print("*",symbol,delta)
+#
+#
+# reco = get_recommendation(symbol, delta)
+# print(reco)

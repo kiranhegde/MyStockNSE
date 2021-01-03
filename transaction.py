@@ -390,7 +390,7 @@ class add_new_trans(QDialog):
             self.dbsave = True
 
         # self.setWindowIcon(QIcon('icons/icon.ico'))
-        self.setGeometry(450, 150, 450, 300)
+        self.setGeometry(450, 150, 450, 400)
         self.setFixedSize(self.size())
 
         self.UI()

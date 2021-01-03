@@ -1,19 +1,19 @@
-import sys,os
-from PyQt5.QtWidgets import *
+import sys
+
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import *
-from PyQt5.QtCore import Qt,QPoint,pyqtSlot
-# from cStringIO import StringIO
-# from PIL import Image
-
-
-# import sqlite3
+from PyQt5.QtWidgets import *
 
 from Purchase.purchase import purchase_list
-from sales import sold_list
-from profit_list import  gain_shares
-from db_management import check_db,set_defaults,add_stocks,saveStockDB
-from transaction import show_transactions
+from db_management import check_db, set_defaults, add_stocks, saveStockDB,gen_id
 from get_nse_data import get_recommendation
+from profit_list import gain_shares
+from sales import sold_list
+from transaction import show_transactions
+
+# from cStringIO import StringIO
+# from PIL import Image
+# import sqlite3
 
 db_file = "MyInvestment.db"
 
@@ -109,7 +109,8 @@ class MyMainWindow(QMainWindow):
 
         if add_inp.exec_() == add_inp.Accepted:
             new_stock = add_inp.get_inp()
-            invoice = saveStockDB(new_stock, invoice)
+            invoice = gen_id()
+            invoice = saveStockDB(new_stock, invoice,"append")
             # print("New : ",invoice,new_stock)
 
 
